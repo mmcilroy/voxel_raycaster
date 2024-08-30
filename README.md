@@ -3,5 +3,5 @@
 Adventures in rendering voxels with raycasting
 
 ```
-go run game.go camera.go dda.go voxel.go
+go run scenes\perlin-world\main.go
 ```
