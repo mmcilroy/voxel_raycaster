@@ -8,66 +8,61 @@ import (
 	"github.com/mmcilroy/structure_go/voxel"
 )
 
-var gridSize = 4
-var voxelSize = float32(4)
-var sunPos = rl.NewVector3(15, 15, 0)
+var sunPos = voxel.Vector3f{X: 15, Y: 15, Z: 0}
 
-func rotatingPosition(origin rl.Vector3, radius, angleX, angleY float32) rl.Vector3 {
-	up := rl.NewVector3(0, 1, 0)
-	pos := rl.NewVector3(0, 0, radius)
-	pos = rl.Vector3RotateByAxisAngle(pos, up, angleX)
-	forward := rl.Vector3Normalize(rl.Vector3RotateByAxisAngle(pos, up, angleX))
-	right := rl.Vector3CrossProduct(forward, up)
-	pos = rl.Vector3RotateByAxisAngle(pos, right, angleY)
-	pos = rl.Vector3Add(pos, origin)
+var height = float32(15.0)
+
+func rotatingPosition(origin voxel.Vector3f, radius, angleX, angleY float32) voxel.Vector3f {
+	up := voxel.Vector3f{X: 0, Y: 1, Z: 0}
+	pos := voxel.Vector3f{X: 0, Y: 0, Z: radius}
+	pos = pos.RotateByAxisAngle(up, angleX)
+	forward := pos.RotateByAxisAngle(up, angleX).Normalize()
+	right := forward.CrossProduct(up)
+	pos = pos.RotateByAxisAngle(right, angleY)
+	pos = pos.Plus(origin)
 	return pos
 }
 
 func handleInput() {
-	if rl.IsKeyDown('J') {
-		sunPos.X += 3.3 * rl.GetFrameTime()
-	}
-
-	if rl.IsKeyDown('L') {
-		sunPos.X -= 3.3 * rl.GetFrameTime()
-	}
-
 	if rl.IsKeyDown('I') {
-		sunPos.Y += 3.3 * rl.GetFrameTime()
+		height += 3.3 * rl.GetFrameTime()
 	}
 
 	if rl.IsKeyDown('K') {
-		sunPos.Y -= 3.3 * rl.GetFrameTime()
+		height -= 3.3 * rl.GetFrameTime()
 	}
 }
 
 func main() {
+	var gridSize = 4
+	var voxelSize = float32(4)
 	voxels := voxel.NewVoxelGrid(gridSize, gridSize, gridSize, voxelSize)
 	voxels.SetVoxel(1, 1, 1, true)
-	lookAt := rl.NewVector3(6, 6, 6)
+	lookAt := voxel.Vector3f{X: 6, Y: 6, Z: 6}
 	sunAngle := float32(0)
 
 	render3D := func() {
-		positions := []rl.Vector3{
-			rl.NewVector3(6, 10, 6), // top
-			rl.NewVector3(6, 2, 6),  // bottom
-			rl.NewVector3(10, 6, 6), // left
-			rl.NewVector3(2, 6, 6),  // right
-			rl.NewVector3(6, 6, 2),  // front
-			rl.NewVector3(6, 6, 10), // back
+		positions := []voxel.Vector3f{
+			{X: 6, Y: 10, Z: 6}, // top
+			{X: 6, Y: 2, Z: 6},  // bottom
+			{X: 10, Y: 6, Z: 6}, // left
+			{X: 2, Y: 6, Z: 6},  // right
+			{X: 6, Y: 6, Z: 2},  // front
+			{X: 6, Y: 6, Z: 10}, // back
 		}
 
-		sunPos = rotatingPosition(rl.NewVector3(6, 15, 6), 8, sunAngle, 0)
+		sunPos = rotatingPosition(voxel.Vector3f{X: 6, Y: 15, Z: 6}, 8, sunAngle, 0)
+		sunPos.Y = height
 		sunAngle += rl.GetFrameTime()
 
 		for _, pos := range positions {
-			dir := rl.Vector3Normalize(rl.Vector3Subtract(lookAt, pos))
+			dir := voxel.Direction(lookAt, pos)
 			hit, hitPos, _ := voxels.DDASimple(pos, dir)
 
 			if hit != 0 {
 				// draw a ray towards the sun
-				sunDir := rl.Vector3Normalize(rl.Vector3Subtract(hitPos, sunPos))
-				rl.DrawRay(rl.NewRay(sunPos, sunDir), rl.SkyBlue)
+				sunDir := voxel.Direction(hitPos, sunPos)
+				scene.DrawRay(sunPos, sunDir, rl.SkyBlue)
 
 				// check if the hit point is visible to the sun
 				sunHit, sunHitPos, _ := voxels.DDASimple(sunPos, sunDir)
@@ -76,28 +71,29 @@ func main() {
 				if sunHit != 0 && sunHit == hit {
 
 					// draw the normal
-					normal := rl.Vector3Zero()
+					normal := voxel.Vector3fZero()
 					if sunHit == -1 {
-						normal = rl.NewVector3(1, 0, 0)
+						normal = voxel.Vector3f{X: 1, Y: 0, Z: 0}
 					} else if sunHit == 1 {
-						normal = rl.NewVector3(-1, 0, 0)
+						normal = voxel.Vector3f{X: -1, Y: 0, Z: 0}
 					} else if sunHit == -2 {
-						normal = rl.NewVector3(0, 1, 0)
+						normal = voxel.Vector3f{X: 0, Y: 1, Z: 0}
 					} else if sunHit == 2 {
-						normal = rl.NewVector3(0, -1, 0)
+						normal = voxel.Vector3f{X: 0, Y: -1, Z: 0}
 					} else if sunHit == -3 {
-						normal = rl.NewVector3(0, 0, 1)
+						normal = voxel.Vector3f{X: 0, Y: 0, Z: 1}
 					} else if sunHit == 3 {
-						normal = rl.NewVector3(0, 0, -1)
+						normal = voxel.Vector3f{X: 0, Y: 0, Z: -1}
 					}
 
-					lightDir := rl.Vector3Normalize(rl.Vector3Subtract(sunPos, sunHitPos))
-					diffuseLight := rl.Vector3DotProduct(normal, lightDir)
+					lightDir := voxel.Direction(sunPos, sunHitPos)
+					diffuseLight := normal.DotProduct(lightDir)
 					if diffuseLight < 0 {
 						diffuseLight = 0
 					}
 
-					rl.DrawSphere(sunHitPos, 0.5, rl.NewColor(uint8(255*diffuseLight), uint8(255*diffuseLight), uint8(255*diffuseLight), 255))
+					color := rl.NewColor(uint8(255*diffuseLight), uint8(255*diffuseLight), uint8(255*diffuseLight), 255)
+					scene.DrawSphere(sunHitPos, 0.5, color)
 				}
 			}
 		}

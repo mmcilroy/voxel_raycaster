@@ -1,13 +1,5 @@
 package voxel
 
-import (
-	rl "github.com/gen2brain/raylib-go/raylib"
-)
-
-func abs(x float32) float32 {
-	return max(x, -x)
-}
-
 type DDACallbackResult int
 
 const (
@@ -18,58 +10,39 @@ const (
 
 type DDACallbackFn func(grid *VoxelGrid, x, y, z int) DDACallbackResult
 
-func (grid *VoxelGrid) DDA(worldPos rl.Vector3, rayDir rl.Vector3, callback DDACallbackFn) (int, rl.Vector3, rl.Vector3) {
-
-	// convert worldPos to voxel space
-	voxelPos := rl.Vector3Scale(worldPos, 1/grid.VoxelSize)
+func (grid *VoxelGrid) DDA(rayPos Vector3f, rayDir Vector3f, callback DDACallbackFn) (int, Vector3f, Vector3i) {
+	// convert rayPos to voxel space
+	rayPos = rayPos.DivScalar(grid.VoxelSize)
 
 	// which box of the map we're in
-	mapX, mapY, mapZ := int(voxelPos.X), int(voxelPos.Y), int(voxelPos.Z)
+	mapPos := rayPos.ToVector3i()
 
 	// length of ray from one xyz side to next
-	deltaDistX, deltaDistY, deltaDistZ := float32(1e30), float32(1e30), float32(1e30)
-
-	if rayDir.X != 0 {
-		deltaDistX = abs(1 / rayDir.X)
-	}
-
-	if rayDir.Y != 0 {
-		deltaDistY = abs(1 / rayDir.Y)
-	}
-
-	if rayDir.Z != 0 {
-		deltaDistZ = abs(1 / rayDir.Z)
-	}
-
-	// length of ray from current position to next x or y-side
-	var sideDistX, sideDistY, sideDistZ float32
+	deltaDist := rayDir.Inverse().Abs()
 
 	// what direction to step in x or y-direction (either +1 or -1)
-	var stepX, stepY, stepZ int
+	step := rayDir.Sign().ToVector3i()
+
+	// length of ray from current position to next x or y-side
+	var sideDist Vector3f
 
 	// calculate step and initial sideDist
 	if rayDir.X < 0 {
-		stepX = -1
-		sideDistX = (voxelPos.X - float32(mapX)) * deltaDistX
+		sideDist.X = (rayPos.X - float32(mapPos.X)) * deltaDist.X
 	} else {
-		stepX = 1
-		sideDistX = (float32(mapX) + 1.0 - voxelPos.X) * deltaDistX
+		sideDist.X = (float32(mapPos.X) + 1.0 - rayPos.X) * deltaDist.X
 	}
 
 	if rayDir.Y < 0 {
-		stepY = -1
-		sideDistY = (voxelPos.Y - float32(mapY)) * deltaDistY
+		sideDist.Y = (rayPos.Y - float32(mapPos.Y)) * deltaDist.Y
 	} else {
-		stepY = 1
-		sideDistY = (float32(mapY) + 1.0 - voxelPos.Y) * deltaDistY
+		sideDist.Y = (float32(mapPos.Y) + 1.0 - rayPos.Y) * deltaDist.Y
 	}
 
 	if rayDir.Z < 0 {
-		stepZ = -1
-		sideDistZ = (voxelPos.Z - float32(mapZ)) * deltaDistZ
+		sideDist.Z = (rayPos.Z - float32(mapPos.Z)) * deltaDist.Z
 	} else {
-		stepZ = 1
-		sideDistZ = (float32(mapZ) + 1.0 - voxelPos.Z) * deltaDistZ
+		sideDist.Z = (float32(mapPos.Z) + 1.0 - rayPos.Z) * deltaDist.Z
 	}
 
 	hit, side := 0, 4
@@ -77,7 +50,7 @@ func (grid *VoxelGrid) DDA(worldPos rl.Vector3, rayDir rl.Vector3, callback DDAC
 
 	for hit == 0 {
 
-		result := callback(grid, mapX, mapY, mapZ)
+		result := callback(grid, mapPos.X, mapPos.Y, mapPos.Z)
 
 		if result == OOB {
 			hit = 0
@@ -89,50 +62,31 @@ func (grid *VoxelGrid) DDA(worldPos rl.Vector3, rayDir rl.Vector3, callback DDAC
 			break
 		}
 
-		//jump to next map square, either in x, y or z direction
-		if sideDistX <= sideDistY && sideDistX <= sideDistZ {
-			dist = sideDistX
-			sideDistX += deltaDistX
-			mapX += stepX
-			side = 1 * stepX
-		} else if sideDistY <= sideDistX && sideDistY <= sideDistZ {
-			dist = sideDistY
-			sideDistY += deltaDistY
-			mapY += stepY
-			side = 2 * stepY
+		// jump to next map square, either in x, y or z direction
+		if sideDist.X <= sideDist.Y && sideDist.X <= sideDist.Z {
+			dist = sideDist.X
+			sideDist.X += deltaDist.X
+			mapPos.X += step.X
+			side = 1 * step.X
+		} else if sideDist.Y <= sideDist.X && sideDist.Y <= sideDist.Z {
+			dist = sideDist.Y
+			sideDist.Y += deltaDist.Y
+			mapPos.Y += step.Y
+			side = 2 * step.Y
 		} else {
-			dist = sideDistZ
-			sideDistZ += deltaDistZ
-			mapZ += stepZ
-			side = 3 * stepZ
+			dist = sideDist.Z
+			sideDist.Z += deltaDist.Z
+			mapPos.Z += step.Z
+			side = 3 * step.Z
 		}
 	}
 
-	return hit,
-		rl.Vector3Add(worldPos, rl.Vector3Scale(rl.Vector3Scale(rayDir, dist), grid.VoxelSize)),
-		rl.NewVector3(float32(mapX), float32(mapY), float32(mapZ))
+	hitPos := rayPos.Plus(rayDir.MulScalar(dist)).MulScalar(grid.VoxelSize)
+
+	return hit, hitPos, mapPos
 }
 
-func (grid *VoxelGrid) DDARecursive(rayPos rl.Vector3, rayDir rl.Vector3, callback DDACallbackFn) (int, rl.Vector3, rl.Vector3) {
-	// For the max resolution grid we move rayStart back slightly
-	// As this reduces the chances of it starting inside a voxel
-	if grid.Parent == nil {
-		rayPos = rl.Vector3Subtract(rayPos, rayDir)
-	}
-
-	// Perform the DDA
-	hit, hitPos, mapPos := grid.DDA(rayPos, rayDir, callback)
-
-	// Nothing was hit or there is no parent so return immediately
-	if hit == 0 || grid.Parent == nil {
-		return hit, hitPos, mapPos
-	}
-
-	// Something was hit and we have further checks we could do
-	return grid.Parent.DDARecursive(hitPos, rayDir, callback)
-}
-
-func (grid *VoxelGrid) DDASimple(worldPos rl.Vector3, rayDir rl.Vector3) (int, rl.Vector3, rl.Vector3) {
+func (grid *VoxelGrid) DDASimple(worldPos Vector3f, rayDir Vector3f) (int, Vector3f, Vector3i) {
 	return grid.DDA(worldPos, rayDir, func(grid *VoxelGrid, x, y, z int) DDACallbackResult {
 		if x < 0 || y < 0 || z < 0 {
 			return OOB
@@ -148,4 +102,23 @@ func (grid *VoxelGrid) DDASimple(worldPos rl.Vector3, rayDir rl.Vector3) (int, r
 
 		return MISS
 	})
+}
+
+func (grid *VoxelGrid) DDARecursive(rayPos Vector3f, rayDir Vector3f, callback DDACallbackFn) (int, Vector3f, Vector3i) {
+	// For the max resolution grid we move rayStart back slightly
+	// As this reduces the chances of it starting inside a voxel
+	if grid.Parent == nil {
+		rayPos = rayPos.Sub(rayDir)
+	}
+
+	// Perform the DDA
+	hit, hitPos, mapPos := grid.DDA(rayPos, rayDir, callback)
+
+	// Nothing was hit or there is no parent so return immediately
+	if hit == 0 || grid.Parent == nil {
+		return hit, hitPos, mapPos
+	}
+
+	// Something was hit and we have further checks we could do
+	return grid.Parent.DDARecursive(hitPos, rayDir, callback)
 }

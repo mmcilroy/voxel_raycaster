@@ -10,32 +10,28 @@ type VoxelGrid struct {
 	NumVoxelsY int
 	NumVoxelsZ int
 	VoxelSize  float32
-	Voxels     []uint64
+	Voxels     []uint8
 }
 
 func NewVoxelGrid(nx, ny, nz int, sz float32) *VoxelGrid {
-	nv := nx / 4 * ny / 4 * nz / 4
-	if nv == 0 {
-		nv = 1
-	}
 	return &VoxelGrid{
 		NumVoxelsX: nx,
 		NumVoxelsY: ny,
 		NumVoxelsZ: nz,
 		VoxelSize:  sz,
-		Voxels:     make([]uint64, nv),
+		Voxels:     make([]uint8, nx/2*ny/2*nz/2),
 	}
 }
 
-func voxelBitMask(x, y, z int) uint64 {
-	bit := uint64(x + (z * 4) + (y * 4 * 4))
-	mask := uint64(1) << bit
+func voxelBitMask(x, y, z int) uint8 {
+	bit := uint8(x + (z * 2) + (y * 2 * 2))
+	mask := uint8(1) << bit
 	return mask
 }
 
 func (grid *VoxelGrid) VoxelIndex(x, y, z int) int {
-	vx, vy, vz := x/4, y/4, z/4
-	return vx + vz*grid.NumVoxelsX/4 + vy*grid.NumVoxelsX/4*grid.NumVoxelsZ/4
+	vx, vy, vz := x/2, y/2, z/2
+	return vx + vz*grid.NumVoxelsX/2 + vy*grid.NumVoxelsX/2*grid.NumVoxelsZ/2
 }
 
 func (grid *VoxelGrid) GetVoxel(x, y, z int) bool {
@@ -51,7 +47,7 @@ func (grid *VoxelGrid) GetVoxel(x, y, z int) bool {
 		return false
 	}
 
-	mask := voxelBitMask(x%4, y%4, z%4)
+	mask := voxelBitMask(x%2, y%2, z%2)
 	return voxel&mask != 0
 }
 
@@ -63,7 +59,7 @@ func (grid *VoxelGrid) SetVoxel(x, y, z int, set bool) {
 	}
 
 	voxel := &grid.Voxels[i]
-	mask := voxelBitMask(x%4, y%4, z%4)
+	mask := voxelBitMask(x%2, y%2, z%2)
 
 	if set {
 		*voxel = *voxel | mask

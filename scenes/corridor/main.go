@@ -16,8 +16,10 @@ var raycaster = voxel.NewRaycastingCamera(NUM_RAYS_X, NUM_RAYS_Y, 0.66)
 
 var world = voxel.NewVoxelGrid(WORLD_SIZE, WORLD_SIZE, WORLD_SIZE, VOXEL_SIZE)
 
-func pixelColorFn(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, rayDir rl.Vector3) rl.Color {
-	rayHit, _, _ := world.DDARecursive(raycaster.Position, rayDir, func(grid *voxel.VoxelGrid, x, y, z int) voxel.DDACallbackResult {
+func pixelColorFn(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, rayDir voxel.Vector3f) rl.Color {
+	ro := voxel.Vector3f{X: raycaster.Position.X, Y: raycaster.Position.Y, Z: raycaster.Position.Z}
+	rd := voxel.Vector3f{X: rayDir.X, Y: rayDir.Y, Z: rayDir.Z}
+	rayHit, _, _ := world.DDARecursive(ro, rd, func(grid *voxel.VoxelGrid, x, y, z int) voxel.DDACallbackResult {
 		if x < 0 || y < 0 || z < 0 {
 			return voxel.OOB
 		}
@@ -56,5 +58,5 @@ func main() {
 		}
 	}
 
-	scene.RenderRaycastingScene(&raycaster, world, pixelColorFn)
+	scene.RenderRaycastingScene(&raycaster, world, pixelColorFn, func() {})
 }

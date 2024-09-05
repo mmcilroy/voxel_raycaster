@@ -64,14 +64,18 @@ func main() {
 
 		for _, pos := range positions {
 			dir := rl.Vector3Normalize(rl.Vector3Subtract(lookAt, pos))
-			hit, hitPos, voxelPos := voxels.DDASimple(pos, dir)
+
+			ro := voxel.Vector3f{X: pos.X, Y: pos.Y, Z: pos.Z}
+			rd := voxel.Vector3f{X: dir.X, Y: dir.Y, Z: dir.Z}
+
+			hit, hitPos, voxelPos := voxels.DDASimple(ro, rd)
 			if hit != 0 {
-				rl.DrawSphere(hitPos, 0.2, rl.Yellow)
+				rl.DrawSphere(rl.NewVector3(hitPos.X, hitPos.Y, hitPos.Z), 0.2, rl.Yellow)
 			} else {
 				fmt.Println("Miss!")
 
 			}
-			if !rl.Vector3Equals(voxelPos, rl.NewVector3(1, 1, 1)) {
+			if !rl.Vector3Equals(rl.NewVector3(float32(voxelPos.X), float32(voxelPos.Y), float32(voxelPos.Z)), rl.NewVector3(1, 1, 1)) {
 				fmt.Println("VoxelPos!")
 			}
 			rl.DrawRay(rl.NewRay(pos, dir), rl.Black)

@@ -8,6 +8,18 @@ import (
 	"github.com/mmcilroy/structure_go/voxel"
 )
 
+func ToRlVector(v voxel.Vector3f) rl.Vector3 {
+	return rl.NewVector3(v.X, v.Y, v.Z)
+}
+
+func DrawRay(pos voxel.Vector3f, dir voxel.Vector3f, color rl.Color) {
+	rl.DrawRay(rl.NewRay(ToRlVector(pos), ToRlVector(dir)), rl.SkyBlue)
+}
+
+func DrawSphere(pos voxel.Vector3f, radius float32, color rl.Color) {
+	rl.DrawSphere(ToRlVector(pos), radius, color)
+}
+
 func RenderScene(handleInput func(), render3D func(), render2D func()) {
 	rl.InitWindow(1600, 900, "")
 	defer rl.CloseWindow()
@@ -64,7 +76,7 @@ func RenderVoxelScene(voxels *voxel.VoxelGrid, handleInput func(), render3D func
 const NUM_THREADS_X = 4
 const NUM_THREADS_Y = 4
 
-type PixelColorFn func(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, rayDir rl.Vector3) rl.Color
+type PixelColorFn func(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, rayDir voxel.Vector3f) rl.Color
 
 func raycast(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, xa, xb, ya, yb int32, pixelColorFn PixelColorFn, pixels *[]rl.Color, frameWait *sync.WaitGroup) {
 	defer frameWait.Done()
@@ -80,7 +92,7 @@ func raycast(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, xa, xb, ya
 	}
 }
 
-func RenderRaycastingScene(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, pixelColorFn PixelColorFn) {
+func RenderRaycastingScene(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, pixelColorFn PixelColorFn, handleInput func()) {
 	rl.InitWindow(1600, 900, "")
 	defer rl.CloseWindow()
 
@@ -106,25 +118,35 @@ func RenderRaycastingScene(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGr
 		}
 
 		if rl.IsKeyDown('W') {
-			camera.Position = rl.Vector3Add(camera.Position, rl.Vector3Scale(camera.Forward, distanceMoved))
+			camera.Position = camera.Position.Plus(camera.Forward.MulScalar(distanceMoved))
 		}
 
 		if rl.IsKeyDown('A') {
-			camera.Position = rl.Vector3Subtract(camera.Position, rl.Vector3Scale(camera.Right, distanceMoved))
+			camera.Position = camera.Position.Sub(camera.Right.MulScalar(distanceMoved))
 		}
 
 		if rl.IsKeyDown('S') {
-			camera.Position = rl.Vector3Subtract(camera.Position, rl.Vector3Scale(camera.Forward, distanceMoved))
+			camera.Position = camera.Position.Sub(camera.Forward.MulScalar(distanceMoved))
 		}
 
 		if rl.IsKeyDown('D') {
-			camera.Position = rl.Vector3Add(camera.Position, rl.Vector3Scale(camera.Right, distanceMoved))
+			camera.Position = camera.Position.Plus(camera.Right.MulScalar(distanceMoved))
+		}
+
+		if rl.IsKeyDown(rl.KeySpace) {
+			camera.Position.Y += distanceMoved
+		}
+
+		if rl.IsKeyDown(rl.KeyLeftControl) {
+			camera.Position.Y -= distanceMoved
 		}
 
 		mouseDelta := rl.GetMouseDelta()
 		rotationX += mouseDelta.X * -0.003
 		rotationY += mouseDelta.Y * -0.003
 		camera.Rotate(rotationX, rotationY)
+
+		handleInput()
 
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.RayWhite)
