@@ -1,18 +1,32 @@
 package main
 
 import (
+	"fmt"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 	scene "github.com/mmcilroy/structure_go/scenes"
 	"github.com/mmcilroy/structure_go/voxel"
 )
 
+const WORLD_WIDTH, WORLD_HEIGHT = 256, 128
+
 const NUM_RAYS_X, NUM_RAYS_Y = 320, 180
 
 var raycaster = voxel.NewRaycastingCamera(NUM_RAYS_X, NUM_RAYS_Y, 0.66)
 
-var sunPos = voxel.Vector3f{X: 255, Y: 127, Z: 0}
+var sunPos voxel.Vector3f
 
-var renderMode = 1
+var sunAngle float32
+
+var sunHeight = float32(WORLD_HEIGHT - 1)
+
+var enableLighting = true
+
+var enableRecusiveDDA = true
+
+var enableLOD = false
+
+var enablePerPixelLighting = false
 
 func initPerlinWorld(w, h int) *voxel.VoxelGrid {
 	world := voxel.NewVoxelGrid(w, h, w, 1.0)
@@ -20,7 +34,7 @@ func initPerlinWorld(w, h int) *voxel.VoxelGrid {
 	perlinNoise := rl.GenImagePerlinNoise(world.NumVoxelsX, world.NumVoxelsZ, 0, 0, 0.5)
 	colors := rl.LoadImageColors(perlinNoise)
 	maxHeight := float32(0.0)
-	gap := w / 8
+	gap := w / 6
 
 	for z := gap; z < world.NumVoxelsZ-gap; z++ {
 		for x := gap; x < world.NumVoxelsX-gap; x++ {
@@ -40,52 +54,54 @@ func initPerlinWorld(w, h int) *voxel.VoxelGrid {
 	return world
 }
 
-func readInput() {
+func preUpdate() {
 	dist := 1.3 * rl.GetFrameTime()
+
+	if rl.IsKeyPressed('L') {
+		enableLighting = !enableLighting
+	}
+
+	if rl.IsKeyPressed('R') {
+		enableRecusiveDDA = !enableRecusiveDDA
+	}
+
+	if rl.IsKeyPressed('O') {
+		enableLOD = !enableLOD
+	}
+
+	if rl.IsKeyPressed('P') {
+		enablePerPixelLighting = !enablePerPixelLighting
+	}
 
 	if rl.IsKeyDown(rl.KeyLeftShift) {
 		dist *= 20
 	}
 
-	if rl.IsKeyPressed('1') {
-		sunPos = voxel.Vector3f{X: 255, Y: 127, Z: 0}
-	}
-
-	if rl.IsKeyPressed('2') {
-		sunPos = voxel.Vector3f{X: 0, Y: 127, Z: 0}
-	}
-
-	if rl.IsKeyPressed('3') {
-		sunPos = voxel.Vector3f{X: 255, Y: 127, Z: 255}
-	}
-
-	if rl.IsKeyPressed('4') {
-		sunPos = voxel.Vector3f{X: 0, Y: 127, Z: 255}
-	}
-
-	if rl.IsKeyPressed('5') {
-		sunPos = voxel.Vector3f{X: 127, Y: 127, Z: 127}
-	}
-
 	if rl.IsKeyDown(rl.KeyDown) {
-		sunPos.Y -= dist
+		sunHeight -= dist
 	}
 
 	if rl.IsKeyDown(rl.KeyUp) {
-		sunPos.Y += dist
+		sunHeight += dist
 	}
+
+	sunPos = scene.RotatingPosition(voxel.Vector3f{X: WORLD_WIDTH / 2, Y: WORLD_HEIGHT - 1, Z: WORLD_WIDTH / 2}, WORLD_WIDTH/2, sunAngle, 0)
+	sunPos.Y = sunHeight
+	sunAngle += rl.GetFrameTime()
+}
+
+func postUpdate() {
+	rl.DrawText(fmt.Sprintf("Lighting (L): %t, RecursiveDDA (R): %t, LOD (O) %t, PerPixelLighting (P): %t", enableLighting, enableRecusiveDDA, enableLOD, enablePerPixelLighting), 20, 80, 20, rl.White)
 }
 
 func pixelMinecraft(rh int) rl.Color {
-	color := rl.SkyBlue
+	color := rl.Black
 	if rh == 1 || rh == -1 {
-		color = rl.DarkBrown
+		color = rl.Brown
 	} else if rh == 2 || rh == -2 {
 		color = rl.Green
 	} else if rh == 3 || rh == -3 {
 		color = rl.Brown
-	} else if rh == 4 || rh == -4 {
-		color = rl.Black
 	}
 	return color
 }
@@ -93,46 +109,49 @@ func pixelMinecraft(rh int) rl.Color {
 func pixelColorFn(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, rayDir voxel.Vector3f) rl.Color {
 	color := rl.SkyBlue
 
-	hit, hitPos, mapPos := voxels.DDASimple(camera.Position, rayDir)
+	// use the full resolution voxel grid if recursion is off
+	// this should decrease performance
+	if !enableRecusiveDDA {
+		for voxels.Parent != nil {
+			voxels = voxels.Parent
+		}
+	}
+
+	var hit int
+	var hitPos voxel.Vector3f
+	var mapPos voxel.Vector3i
+
+	if enableLOD {
+		hit, hitPos, mapPos = voxels.DDARecursiveLOD(camera.Position, camera.Position, rayDir)
+	} else {
+		hit, hitPos, mapPos = voxels.DDARecursiveSimple(camera.Position, rayDir)
+	}
+
+	// if we are lighting per pixel do it per voxel face
+	if !enablePerPixelLighting {
+		hitPos = voxel.HitFaceCenter(hit, hitPos)
+	}
 
 	if hit != 0 {
-		color = rl.Black
+		if enableLighting {
+			// default unlit
+			color = rl.Black
 
-		// check if the hit point is visible to the sun
-		sunDir := hitPos.Sub(sunPos).Normalize()
-		sunHit, sunHitPos, sunMapPos := voxels.DDASimple(sunPos, sunDir)
+			// check if the hit point is visible to the sun
+			sunHit, sunHitPos, sunMapPos := voxels.DDARecursiveSimple(sunPos, hitPos.Sub(sunPos).Normalize())
 
-		// check the sun ray hit our block and on the same face as our initial ray
-		if sunHit != 0 && sunHit == hit && mapPos.Equals(sunMapPos) {
-
-			// calc normal
-			normal := voxel.Vector3fZero()
-			if sunHit == -1 {
-				normal = voxel.Vector3f{X: 1, Y: 0, Z: 0}
-			} else if sunHit == 1 {
-				normal = voxel.Vector3f{X: -1, Y: 0, Z: 0}
-			} else if sunHit == -2 {
-				normal = voxel.Vector3f{X: 0, Y: 1, Z: 0}
-			} else if sunHit == 2 {
-				normal = voxel.Vector3f{X: 0, Y: -1, Z: 0}
-			} else if sunHit == -3 {
-				normal = voxel.Vector3f{X: 0, Y: 0, Z: 1}
-			} else if sunHit == 3 {
-				normal = voxel.Vector3f{X: 0, Y: 0, Z: -1}
+			// if sun ray hits the same block and face as our initial ray calc lighting
+			if sunHit == hit && sunMapPos.Equals(mapPos) {
+				diffuseLight := voxel.DiffuseLight(sunHit, voxel.Direction(sunPos, sunHitPos))
+				color = pixelMinecraft(sunHit)
+				color = rl.NewColor(
+					uint8(float32(color.R)*diffuseLight),
+					uint8(float32(color.G)*diffuseLight),
+					uint8(float32(color.B)*diffuseLight),
+					255)
 			}
-
-			lightDir := sunPos.Sub(sunHitPos).Normalize()
-			diffuseLight := normal.DotProduct(lightDir)
-			if diffuseLight < 0 {
-				diffuseLight = 0
-			}
-
+		} else {
 			color = pixelMinecraft(hit)
-			color = rl.NewColor(
-				uint8(float32(color.R)*diffuseLight),
-				uint8(float32(color.G)*diffuseLight),
-				uint8(float32(color.B)*diffuseLight),
-				255)
 		}
 	}
 
@@ -141,9 +160,11 @@ func pixelColorFn(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, rayDi
 
 func main() {
 	// Full res world
-	world := initPerlinWorld(256, 128)
+	world := initPerlinWorld(WORLD_WIDTH, WORLD_HEIGHT)
 
-	// Compress world here
+	for world.NumVoxelsY > 2 {
+		world = world.Compress()
+	}
 
-	scene.RenderRaycastingScene(&raycaster, world, pixelColorFn, readInput)
+	scene.RenderRaycastingScene(&raycaster, world, pixelColorFn, preUpdate, postUpdate)
 }

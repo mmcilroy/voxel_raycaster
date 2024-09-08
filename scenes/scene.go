@@ -8,6 +8,9 @@ import (
 	"github.com/mmcilroy/structure_go/voxel"
 )
 
+const NUM_THREADS_X = 4
+const NUM_THREADS_Y = 4
+
 func ToRlVector(v voxel.Vector3f) rl.Vector3 {
 	return rl.NewVector3(v.X, v.Y, v.Z)
 }
@@ -18,6 +21,27 @@ func DrawRay(pos voxel.Vector3f, dir voxel.Vector3f, color rl.Color) {
 
 func DrawSphere(pos voxel.Vector3f, radius float32, color rl.Color) {
 	rl.DrawSphere(ToRlVector(pos), radius, color)
+}
+
+func DrawVoxel(x, y, z int, s float32, c rl.Color) {
+	hs := s / 2
+	rl.DrawCube(rl.NewVector3(float32(x)*s+hs, float32(y)*s+hs, float32(z)*s+hs), s, s, s, c)
+}
+
+func DrawVoxelOutline(x, y, z int, s float32, c rl.Color) {
+	hs := s / 2
+	rl.DrawCubeWires(rl.NewVector3(float32(x)*s+hs, float32(y)*s+hs, float32(z)*s+hs), s, s, s, c)
+}
+
+func RotatingPosition(origin voxel.Vector3f, radius, angleX, angleY float32) voxel.Vector3f {
+	up := voxel.Vector3f{X: 0, Y: 1, Z: 0}
+	pos := voxel.Vector3f{X: 0, Y: 0, Z: radius}
+	pos = pos.RotateByAxisAngle(up, angleX)
+	forward := pos.RotateByAxisAngle(up, angleX).Normalize()
+	right := forward.CrossProduct(up)
+	pos = pos.RotateByAxisAngle(right, angleY)
+	pos = pos.Plus(origin)
+	return pos
 }
 
 func RenderScene(handleInput func(), render3D func(), render2D func()) {
@@ -36,10 +60,10 @@ func RenderScene(handleInput func(), render3D func(), render2D func()) {
 
 	for !rl.WindowShouldClose() {
 		if rl.IsKeyDown(rl.KeySpace) {
-			camera.Position.Y += 3.3 * rl.GetFrameTime()
+			camera.Position.Y += 10 * rl.GetFrameTime()
 		}
 		if rl.IsKeyDown(rl.KeyLeftControl) {
-			camera.Position.Y -= 3.3 * rl.GetFrameTime()
+			camera.Position.Y -= 10 * rl.GetFrameTime()
 		}
 		handleInput()
 		rl.UpdateCamera(&camera, rl.CameraThirdPerson)
@@ -73,9 +97,6 @@ func RenderVoxelScene(voxels *voxel.VoxelGrid, handleInput func(), render3D func
 	}, render2D)
 }
 
-const NUM_THREADS_X = 4
-const NUM_THREADS_Y = 4
-
 type PixelColorFn func(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, rayDir voxel.Vector3f) rl.Color
 
 func raycast(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, xa, xb, ya, yb int32, pixelColorFn PixelColorFn, pixels *[]rl.Color, frameWait *sync.WaitGroup) {
@@ -92,7 +113,7 @@ func raycast(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, xa, xb, ya
 	}
 }
 
-func RenderRaycastingScene(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, pixelColorFn PixelColorFn, handleInput func()) {
+func RenderRaycastingScene(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, pixelColorFn PixelColorFn, preFn func(), postFn func()) {
 	rl.InitWindow(1600, 900, "")
 	defer rl.CloseWindow()
 
@@ -146,7 +167,7 @@ func RenderRaycastingScene(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGr
 		rotationY += mouseDelta.Y * -0.003
 		camera.Rotate(rotationX, rotationY)
 
-		handleInput()
+		preFn()
 
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.RayWhite)
@@ -188,7 +209,10 @@ func RenderRaycastingScene(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGr
 
 		rl.DrawFPS(20, 20)
 		rl.DrawText(fmt.Sprintf("%.02f, %.02f, %.02f", camera.Position.X, camera.Position.Y, camera.Position.Z), 20, 40, 20, rl.White)
-		rl.DrawText(fmt.Sprintf("%.02f, %.02f", rotationX, rotationY), 20, 80, 20, rl.White)
+		rl.DrawText(fmt.Sprintf("%.02f, %.02f", rotationX, rotationY), 20, 60, 20, rl.White)
+
+		postFn()
+
 		rl.EndDrawing()
 	}
 }

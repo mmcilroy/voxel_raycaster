@@ -122,3 +122,56 @@ func (grid *VoxelGrid) DDARecursive(rayPos Vector3f, rayDir Vector3f, callback D
 	// Something was hit and we have further checks we could do
 	return grid.Parent.DDARecursive(hitPos, rayDir, callback)
 }
+
+func (grid *VoxelGrid) DDARecursiveSimple(rayPos Vector3f, rayDir Vector3f) (int, Vector3f, Vector3i) {
+	// For the max resolution grid we move rayStart back slightly
+	// As this reduces the chances of it starting inside a voxel
+	if grid.Parent == nil {
+		rayPos = rayPos.Sub(rayDir)
+	}
+
+	// Perform the DDA
+	hit, hitPos, mapPos := grid.DDASimple(rayPos, rayDir)
+
+	// Nothing was hit or there is no parent so return immediately
+	if hit == 0 || grid.Parent == nil {
+		return hit, hitPos, mapPos
+	}
+
+	// Something was hit and we have further checks we could do
+	return grid.Parent.DDARecursiveSimple(hitPos, rayDir)
+}
+
+func (grid *VoxelGrid) DDARecursiveLOD(origPos, rayPos Vector3f, rayDir Vector3f) (int, Vector3f, Vector3i) {
+	// For the max resolution grid we move rayStart back slightly
+	// As this reduces the chances of it starting inside a voxel
+	if grid.Parent == nil {
+		rayPos = rayPos.Sub(rayDir)
+	}
+
+	// Perform the DDA
+	hit, hitPos, mapPos := grid.DDASimple(rayPos, rayDir)
+
+	// Nothing was hit or there is no parent so return immediately
+	if hit == 0 || grid.Parent == nil {
+		return hit, hitPos, mapPos
+	}
+
+	// If we are inside a voxel already proceed
+	if hit == 4 {
+		return grid.Parent.DDARecursiveLOD(origPos, hitPos, rayDir)
+	}
+
+	// lod check
+	// we should only check the next higher res grid if the ray hasn't
+	// already travelled a certain distance as there is no point checking
+	// a high resolution version if we are far away
+	dist := Distance(mapPos.ToVector3f(), origPos)
+	s := grid.Parent.VoxelSize * 32
+	if dist >= s /*&& (int(hitPos.X)-mapPos.X >= int(s) || int(hitPos.Z)-mapPos.Z >= int(s))*/ {
+		return hit, hitPos, mapPos
+	}
+
+	// Something was hit and we have further checks we could do
+	return grid.Parent.DDARecursiveLOD(origPos, hitPos, rayDir)
+}

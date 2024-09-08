@@ -1,6 +1,8 @@
 package voxel
 
-import "math"
+import (
+	"math"
+)
 
 type Vector3i struct {
 	X, Y, Z int
@@ -16,6 +18,10 @@ type Vector2f struct {
 
 func (v Vector3f) ToVector3i() Vector3i {
 	return Vector3i{X: int(v.X), Y: int(v.Y), Z: int(v.Z)}
+}
+
+func (v Vector3i) ToVector3f() Vector3f {
+	return Vector3f{X: float32(v.X), Y: float32(v.Y), Z: float32(v.Z)}
 }
 
 func Vector3fZero() Vector3f {
@@ -252,4 +258,11 @@ func (v1 Vector3i) Equals(v2 Vector3i) bool {
 
 func Direction(from Vector3f, to Vector3f) Vector3f {
 	return from.Sub(to).Normalize()
+}
+
+func Distance(v1, v2 Vector3f) float32 {
+	dx := v2.X - v1.X
+	dy := v2.Y - v1.Y
+	dz := v2.Z - v1.Z
+	return float32(math.Sqrt(float64(dx*dx + dy*dy + dz*dz)))
 }
