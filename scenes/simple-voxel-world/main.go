@@ -12,9 +12,7 @@ const WORLD_SIZE = 16
 
 const VOXEL_SIZE = 1
 
-var raycaster = voxel.NewRaycastingCamera(NUM_RAYS_X, NUM_RAYS_Y, 0.66)
-
-var sunPos = voxel.Vector3f{X: WORLD_SIZE - 1, Y: WORLD_SIZE - 1, Z: 0}
+var raycastingScene scene.RaycastingScene
 
 func preUpdate() {
 	dist := 1.3 * rl.GetFrameTime()
@@ -24,56 +22,45 @@ func preUpdate() {
 	}
 
 	if rl.IsKeyPressed('1') {
-		sunPos = voxel.Vector3f{X: WORLD_SIZE - 1, Y: WORLD_SIZE - 1, Z: 0}
+		raycastingScene.SunPos = voxel.Vector3f{X: WORLD_SIZE - 1, Y: WORLD_SIZE - 1, Z: 0}
 	}
 
 	if rl.IsKeyPressed('2') {
-		sunPos = voxel.Vector3f{X: 0, Y: WORLD_SIZE - 1, Z: 0}
+		raycastingScene.SunPos = voxel.Vector3f{X: 0, Y: WORLD_SIZE - 1, Z: 0}
 	}
 
 	if rl.IsKeyPressed('3') {
-		sunPos = voxel.Vector3f{X: WORLD_SIZE - 1, Y: WORLD_SIZE - 1, Z: WORLD_SIZE - 1}
+		raycastingScene.SunPos = voxel.Vector3f{X: WORLD_SIZE - 1, Y: WORLD_SIZE - 1, Z: WORLD_SIZE - 1}
 	}
 
 	if rl.IsKeyPressed('4') {
-		sunPos = voxel.Vector3f{X: 0, Y: WORLD_SIZE - 1, Z: WORLD_SIZE - 1}
+		raycastingScene.SunPos = voxel.Vector3f{X: 0, Y: WORLD_SIZE - 1, Z: WORLD_SIZE - 1}
 	}
 
 	if rl.IsKeyPressed('5') {
-		sunPos = voxel.Vector3f{X: WORLD_SIZE / 2, Y: WORLD_SIZE - 1, Z: WORLD_SIZE / 2}
+		raycastingScene.SunPos = voxel.Vector3f{X: WORLD_SIZE / 2, Y: WORLD_SIZE - 1, Z: WORLD_SIZE / 2}
 	}
 
 	if rl.IsKeyDown(rl.KeyDown) {
-		sunPos.Y -= dist
+		raycastingScene.SunPos.Y -= dist
 	}
 
 	if rl.IsKeyDown(rl.KeyUp) {
-		sunPos.Y += dist
+		raycastingScene.SunPos.Y += dist
 	}
 }
 
-func pixelMinecraftDiffuse(camera *voxel.RaycastingCamera, voxels *voxel.VoxelGrid, rayDir voxel.Vector3f) rl.Color {
-	color := rl.SkyBlue
-
-	hit, hitPos, mapPos := voxels.DDASimple(camera.Position, rayDir)
-
-	hitPos = voxel.HitFaceCenter(hit, hitPos)
-
-	if hit != 0 {
-		// default unlit
-		color = rl.Black
-
-		// is the hit point visible to the sun
-		sunDir := voxel.Direction(hitPos, sunPos)
-		sunHit, sunHitPos, sunMapPos := voxels.DDASimple(sunPos, sunDir)
-
-		// if visible calc diffuse light
-		if sunHit == hit && sunMapPos.Equals(mapPos) {
-			diffuseLight := voxel.DiffuseLight(sunHit, voxel.Direction(sunPos, sunHitPos))
-			color = rl.NewColor(uint8(255*diffuseLight), uint8(255*diffuseLight), uint8(255*diffuseLight), 255)
-		}
+func pixelColorFn(hit int, mapPos voxel.Vector3i) rl.Color {
+	color := rl.Black
+	if hit == 1 || hit == -1 {
+		color = rl.Brown
+	} else if hit == 2 || hit == -2 {
+		color = rl.Green
+	} else if hit == 3 || hit == -3 {
+		color = rl.Brown
+	} else if hit == 0 {
+		color = rl.SkyBlue
 	}
-
 	return color
 }
 
@@ -110,10 +97,14 @@ func initWorld() *voxel.VoxelGrid {
 }
 
 func main() {
-	raycaster.Position.Y = VOXEL_SIZE * 2
+	raycastingScene = scene.RaycastingScene{
+		Voxels:                 initWorld(),
+		Camera:                 voxel.NewRaycastingCamera(NUM_RAYS_X, NUM_RAYS_Y, 0.66),
+		SunPos:                 voxel.Vector3f{X: WORLD_SIZE - 1, Y: WORLD_SIZE - 1, Z: 0},
+		EnableRecursiveDDA:     true,
+		EnableLighting:         true,
+		EnablePerPixelLighting: true,
+	}
 
-	world := initWorld()
-
-	scene.RenderRaycastingScene(&raycaster, world, pixelMinecraftDiffuse, preUpdate, func() {})
-
+	scene.RenderRaycastingScene(&raycastingScene, pixelColorFn, preUpdate, func() {})
 }

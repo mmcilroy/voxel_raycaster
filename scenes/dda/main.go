@@ -12,6 +12,8 @@ const WORLD_WIDTH = 64
 const WORLD_HEIGHT = 64
 const VOXEL_SIZE = 1
 
+var enableRecusiveDDA = true
+
 var callbackCount = 0
 
 var rayOrigin = voxel.Vector3fZero()
@@ -21,6 +23,14 @@ func readInput() {
 
 	if rl.IsKeyDown(rl.KeyLeftShift) {
 		dist *= 20
+	}
+
+	if rl.IsKeyPressed('R') {
+		enableRecusiveDDA = !enableRecusiveDDA
+	}
+
+	if rl.IsKeyPressed('E') {
+		enableRecusiveDDA = !enableRecusiveDDA
 	}
 
 	if rl.IsKeyDown('I') {
@@ -53,11 +63,11 @@ func ddaCallback(grid *voxel.VoxelGrid, x, y, z int) voxel.DDACallbackResult {
 	callbackCount += 1
 
 	if x < 0 || y < 0 || z < 0 {
-		return voxel.OOB
+		return voxel.MISS
 	}
 
 	if x >= grid.NumVoxelsX || y >= grid.NumVoxelsY || z >= grid.NumVoxelsZ {
-		return voxel.OOB
+		return voxel.MISS
 	}
 
 	if grid.GetVoxel(x, y, z) {
@@ -82,11 +92,21 @@ func main() {
 
 	render3D := func() {
 		callbackCount = 0
-		hit, _, _ := voxels.DDARecursive(rayOrigin, voxel.Direction(rayEnd, rayOrigin), ddaCallback)
+
+		v := voxels
+		if !enableRecusiveDDA {
+			for v.Parent != nil {
+				v = v.Parent
+			}
+		}
+
+		hit, _, _ := v.DDARecursive(rayOrigin, voxel.Direction(rayEnd, rayOrigin), ddaCallback)
+
 		scene.DrawSphere(rayOrigin, 0.5, rl.Green)
 		if hit != 0 {
 			scene.DrawSphere(rayEnd, 0.5, rl.Red)
 		}
+
 		rl.DrawGrid(WORLD_WIDTH*2, 1)
 	}
 

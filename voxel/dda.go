@@ -10,6 +10,17 @@ const (
 
 type DDACallbackFn func(grid *VoxelGrid, x, y, z int) DDACallbackResult
 
+func (grid *VoxelGrid) isOOB(x, y, z int, rayDir Vector3f) bool {
+	// we only consider a point to be OOB if xyz is outside the grid and
+	// given the provided rayDir we will never enter it again
+	return (x < 0 && rayDir.X <= 0) ||
+		(y < 0 && rayDir.Y <= 0) ||
+		(z < 0 && rayDir.Z <= 0) ||
+		(x >= grid.NumVoxelsX && rayDir.X >= 0) ||
+		(y >= grid.NumVoxelsY && rayDir.Y >= 0) ||
+		(z >= grid.NumVoxelsZ && rayDir.Z >= 0)
+}
+
 func (grid *VoxelGrid) DDA(rayPos Vector3f, rayDir Vector3f, callback DDACallbackFn) (int, Vector3f, Vector3i) {
 	// convert rayPos to voxel space
 	rayPos = rayPos.DivScalar(grid.VoxelSize)
@@ -52,7 +63,7 @@ func (grid *VoxelGrid) DDA(rayPos Vector3f, rayDir Vector3f, callback DDACallbac
 
 		result := callback(grid, mapPos.X, mapPos.Y, mapPos.Z)
 
-		if result == OOB {
+		if result == OOB || (result == MISS && grid.isOOB(mapPos.X, mapPos.Y, mapPos.Z, rayDir)) {
 			hit = 0
 			break
 		}
@@ -89,11 +100,11 @@ func (grid *VoxelGrid) DDA(rayPos Vector3f, rayDir Vector3f, callback DDACallbac
 func (grid *VoxelGrid) DDASimple(worldPos Vector3f, rayDir Vector3f) (int, Vector3f, Vector3i) {
 	return grid.DDA(worldPos, rayDir, func(grid *VoxelGrid, x, y, z int) DDACallbackResult {
 		if x < 0 || y < 0 || z < 0 {
-			return OOB
+			return MISS
 		}
 
 		if x >= grid.NumVoxelsX || y >= grid.NumVoxelsY || z >= grid.NumVoxelsZ {
-			return OOB
+			return MISS
 		}
 
 		if grid.GetVoxel(x, y, z) {

@@ -4,6 +4,11 @@ github.com/gen2brain/raylib-go/raygui v0.0.0-20240807111636-8861ee437da9 h1:c/1H
 github.com/gen2brain/raylib-go/raygui v0.0.0-20240807111636-8861ee437da9/go.mod h1:Ra1zgJP7vnGst+STvzPPiVJhjicklFWONCz5nu6MnOM=
 github.com/gen2brain/raylib-go/raylib v0.0.0-20240807111636-8861ee437da9 h1:voUyZVwDxeiKv31gHmzHY95Oq/+0+ozj8zmKDiaag/o=
 github.com/gen2brain/raylib-go/raylib v0.0.0-20240807111636-8861ee437da9/go.mod h1:BaY76bZk7nw1/kVOSQObPY1v1iwVE1KHAGMfvI6oK1Q=
+github.com/mattkimber/gandalf v1.3.2/go.mod h1:oHiJ2zLdIdvXWSNio1Cj/CdQICLn3Bh0Vib2Ttu2H7s=
+github.com/mattkimber/gandalf v1.4.0 h1:J4uyunsfMEuMxNMZhUoND9v9H3NWQ5ULvjTy72SDygk=
+github.com/mattkimber/gandalf v1.4.0/go.mod h1:oHiJ2zLdIdvXWSNio1Cj/CdQICLn3Bh0Vib2Ttu2H7s=
+github.com/mattkimber/gorender v1.4.0 h1:EHshs9WvuDG+UbMSYArO3f4dmxCKbWPjhls1PmXZXbE=
+github.com/mattkimber/gorender v1.4.0/go.mod h1:L4GZ6IOWCFYJsHM/RX79Fe6VvQSpUMPQpjPg0clu3Pg=
 golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 h1:vr/HnozRka3pE4EsMEg1lgkXJkTFJCVUX+S/ZT6wYzM=
 golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842/go.mod h1:XtvwrStGgqGPLc4cjQfWqZHG1YFdYs6swckp8vpsjnc=
 golang.org/x/sys v0.20.0 h1:Od9JTbYCk261bKm4M/mw7AklTlFYIa0bIp9BgSm1S8Y=

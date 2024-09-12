@@ -31,8 +31,8 @@ func HitFaceCenter(hit int, hitPos Vector3f) Vector3f {
 
 func DiffuseLight(hit int, dir Vector3f) float32 {
 	diffuseLight := HitNormal(hit).DotProduct(dir)
-	if diffuseLight < 0 {
-		diffuseLight = 0
+	if diffuseLight < 0.2 {
+		diffuseLight = 0.2
 	}
 	return diffuseLight
 }

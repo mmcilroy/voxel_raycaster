@@ -65,6 +65,7 @@ func main() {
 				}
 
 				scene.DrawSphere(sunHitPos, 0.5, color)
+				scene.DrawSphere(sunPos, 1.0, rl.Yellow)
 				scene.DrawRay(sunPos, sunDir, rl.SkyBlue)
 			}
 		}
