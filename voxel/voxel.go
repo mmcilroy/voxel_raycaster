@@ -5,7 +5,8 @@ import (
 )
 
 type VoxelGrid struct {
-	Parent     *VoxelGrid
+	Parent     *VoxelGrid // higher res version
+	Child      *VoxelGrid // lower res version
 	NumVoxelsX int
 	NumVoxelsY int
 	NumVoxelsZ int
@@ -78,6 +79,7 @@ func (grid *VoxelGrid) Compress() *VoxelGrid {
 	// create the new grid which will be half the size
 	newGrid := NewVoxelGrid(grid.NumVoxelsX/2, grid.NumVoxelsY/2, grid.NumVoxelsZ/2, grid.VoxelSize*2)
 	newGrid.Parent = grid
+	grid.Child = newGrid
 
 	for y := 0; y < newGrid.NumVoxelsY; y++ {
 		for z := 0; z < newGrid.NumVoxelsZ; z++ {
@@ -100,4 +102,19 @@ func (grid *VoxelGrid) Compress() *VoxelGrid {
 	}
 
 	return newGrid
+}
+
+func (grid *VoxelGrid) RectangleIntersects(rectCenter Vector3f, rectWidth, rectHeight int) bool {
+	rectCorner := rectCenter.Sub(Vector3f{X: float32(rectWidth) / 2, Y: float32(rectHeight) / 2, Z: float32(rectWidth) / 2})
+	for z := 0; z <= rectWidth; z++ {
+		for y := 0; y <= rectHeight; y++ {
+			for x := 0; x <= rectWidth; x++ {
+				voxelPos := rectCorner.Plus(Vector3f{X: float32(x), Y: float32(y), Z: float32(z)}).ToVector3i()
+				if grid.GetVoxel(voxelPos.X, voxelPos.Y, voxelPos.Z) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

@@ -71,7 +71,7 @@ func column(world *voxel.VoxelGrid, x, y, z int) {
 }
 
 func initWorld() *voxel.VoxelGrid {
-	var world = voxel.NewVoxelGrid(WORLD_SIZE, WORLD_SIZE, WORLD_SIZE, VOXEL_SIZE)
+	var world = voxel.NewVoxelGrid(WORLD_SIZE, WORLD_SIZE, WORLD_SIZE, VOXEL_SIZE/4.0)
 
 	for z := 0; z < world.NumVoxelsZ; z++ {
 		for x := 0; x < world.NumVoxelsX; x++ {
@@ -93,6 +93,8 @@ func initWorld() *voxel.VoxelGrid {
 
 	column(world, center+1, 4, center+1)
 
+	world.SetVoxel(0, 0, 0, false)
+
 	return world
 }
 
@@ -105,6 +107,8 @@ func main() {
 		EnableLighting:         true,
 		EnablePerPixelLighting: true,
 	}
+
+	raycastingScene.Camera.Position = voxel.Vector3f{X: 1, Y: 3, Z: 1}
 
 	scene.RenderRaycastingScene(&raycastingScene, pixelColorFn, preUpdate, func() {})
 }

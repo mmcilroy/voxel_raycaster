@@ -7,7 +7,7 @@ import (
 	"github.com/mmcilroy/structure_go/voxel"
 )
 
-const WORLD_WIDTH, WORLD_HEIGHT = 256, 256
+const WORLD_WIDTH, WORLD_HEIGHT = 128, 128
 
 const NUM_RAYS_X, NUM_RAYS_Y = 320, 180
 
@@ -17,13 +17,12 @@ var palette = make([]rl.Color, 256)
 
 var voxelColors = map[voxel.Vector3i]byte{}
 
+//var voxelColors2 = make([]byte, WORLD_WIDTH*WORLD_HEIGHT*WORLD_WIDTH)
+
 func initWorld() {
-	world = voxel.NewVoxelGrid(WORLD_WIDTH, WORLD_HEIGHT, WORLD_WIDTH, 1)
+	world = voxel.NewVoxelGrid(WORLD_WIDTH, WORLD_HEIGHT, WORLD_WIDTH, 1.0)
 
 	object, _ := magica.FromFile("monu3.vox")
-	//object, _ := magica.FromFile("monu1.vox")
-	//object, _ := magica.FromFile("chr_man.vox")
-	//object, _ := magica.FromFile("chr_knight.vox")
 
 	for i := 0; i < len(object.PaletteData); i += 4 {
 		palette[i/4] = rl.NewColor(object.PaletteData[i], object.PaletteData[i+1], object.PaletteData[i+2], 255)
@@ -36,6 +35,9 @@ func initWorld() {
 				if v != 0 {
 					world.SetVoxel(x+10, z, y+10, true)
 					voxelColors[voxel.Vector3i{X: x + 10, Y: z, Z: y + 10}] = v
+
+					//colorIndex := (x + 10) + z*WORLD_WIDTH + (y+10)*WORLD_WIDTH*WORLD_HEIGHT
+					//voxelColors2[colorIndex] = v
 				}
 			}
 		}
@@ -50,6 +52,9 @@ func pixelColorFn(hit int, mapPos voxel.Vector3i) rl.Color {
 	color := rl.SkyBlue
 
 	if hit != 0 {
+		//colorIndex := (mapPos.X) + mapPos.Z*WORLD_WIDTH + (mapPos.Y)*WORLD_WIDTH*WORLD_HEIGHT
+		//paletteIndex := int(voxelColors2[colorIndex])
+
 		paletteIndex := int(voxelColors[voxel.Vector3i{X: mapPos.X, Y: mapPos.Y, Z: mapPos.Z}])
 		if paletteIndex > 0 {
 			paletteIndex -= 1
@@ -71,6 +76,9 @@ func main() {
 		EnableLighting:         true,
 		EnablePerPixelLighting: true,
 	}
+	raycastingScene.Camera.Position.X = 1
+	raycastingScene.Camera.Position.Y = 5
+	raycastingScene.Camera.Position.Z = 1
 
 	scene.RenderRaycastingScene(&raycastingScene, pixelColorFn, func() {}, func() {})
 }

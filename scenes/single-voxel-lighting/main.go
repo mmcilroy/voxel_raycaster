@@ -47,7 +47,7 @@ func main() {
 		for _, pos := range positions {
 			// are we hitting the voxel
 			dir := voxel.Direction(lookAt, pos)
-			hit, hitPos, _ := voxels.DDASimple(pos, dir)
+			hit, hitPos, _ := voxels.Raycast(pos, dir)
 
 			// calc the light value for the hit
 			if hit != 0 {
@@ -56,7 +56,7 @@ func main() {
 
 				// is the hit point visible to the sun
 				sunDir := voxel.Direction(hitPos, sunPos)
-				sunHit, sunHitPos, _ := voxels.DDASimple(sunPos, sunDir)
+				sunHit, sunHitPos, _ := voxels.Raycast(sunPos, sunDir)
 
 				// if visible calc diffuse light
 				if sunHit == hit {

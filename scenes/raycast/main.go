@@ -8,7 +8,7 @@ import (
 	"github.com/mmcilroy/structure_go/voxel"
 )
 
-const WORLD_WIDTH = 64
+const WORLD_WIDTH = 128
 const WORLD_HEIGHT = 64
 const VOXEL_SIZE = 1
 
@@ -58,23 +58,9 @@ func readInput() {
 	}
 }
 
-func ddaCallback(grid *voxel.VoxelGrid, x, y, z int) voxel.DDACallbackResult {
-	scene.DrawVoxelOutline(x, y, z, grid.VoxelSize, rl.NewColor(255, 0, 0, 63))
+func raycastCallback(grid *voxel.VoxelGrid, mapPos voxel.Vector3i) {
+	scene.DrawVoxelOutline(mapPos.X, mapPos.Y, mapPos.Z, grid.VoxelSize, rl.NewColor(255, 0, 0, 63))
 	callbackCount += 1
-
-	if x < 0 || y < 0 || z < 0 {
-		return voxel.MISS
-	}
-
-	if x >= grid.NumVoxelsX || y >= grid.NumVoxelsY || z >= grid.NumVoxelsZ {
-		return voxel.MISS
-	}
-
-	if grid.GetVoxel(x, y, z) {
-		return voxel.HIT
-	}
-
-	return voxel.MISS
 }
 
 func main() {
@@ -100,7 +86,7 @@ func main() {
 			}
 		}
 
-		hit, _, _ := v.DDARecursive(rayOrigin, voxel.Direction(rayEnd, rayOrigin), ddaCallback)
+		hit, _, _ := v.RaycastRecursiveC(rayOrigin, voxel.Direction(rayEnd, rayOrigin), raycastCallback)
 
 		scene.DrawSphere(rayOrigin, 0.5, rl.Green)
 		if hit != 0 {

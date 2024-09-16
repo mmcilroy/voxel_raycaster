@@ -110,13 +110,12 @@ func raycast(scene *RaycastingScene, xa, xb, ya, yb int32, pixelColorFn PixelCol
 			// decide what version of the voxel grid to use
 			voxels := scene.Voxels
 			if !scene.EnableRecursiveDDA {
-				for voxels.Parent != nil {
-					voxels = voxels.Parent
-				}
+				voxels = scene.UncompressedVoxels
 			}
 
 			// fire a ray into the scene and check what we hit
-			hit, hitPos, mapPos := voxels.DDARecursiveSimple(scene.Camera.Position, rayDir)
+			//hit, hitPos, mapPos := voxels.DDARecursiveSimple(scene.Camera.Position, rayDir)
+			hit, hitPos, mapPos := voxels.RaycastRecursive(scene.Camera.Position, rayDir)
 
 			// get the pixel color for the voxel and face
 			color := pixelColorFn(hit, mapPos)
@@ -125,11 +124,12 @@ func raycast(scene *RaycastingScene, xa, xb, ya, yb int32, pixelColorFn PixelCol
 			if scene.EnableLighting && hit != 0 && hit != 4 {
 				// if we are not lighting per pixel do it per voxel face
 				if !scene.EnablePerPixelLighting {
-					hitPos = voxel.HitFaceCenter(hit, hitPos)
+					hitPos = voxel.HitFaceCenter(hit, hitPos, mapPos, scene.UncompressedVoxels.VoxelSize)
 				}
 
 				// check if the hit point is visible to the sun
-				sunHit, sunHitPos, sunMapPos := voxels.DDARecursiveSimple(scene.SunPos, hitPos.Sub(scene.SunPos).Normalize())
+				//sunHit, sunHitPos, sunMapPos := voxels.DDARecursiveSimple(scene.SunPos, hitPos.Sub(scene.SunPos).Normalize())
+				sunHit, sunHitPos, sunMapPos := voxels.RaycastRecursive(scene.SunPos, voxel.Direction(hitPos, scene.SunPos))
 
 				// if sun ray hits the same block and face as our initial ray calc lighting
 				if sunHit == hit && sunMapPos.Equals(mapPos) {
@@ -155,6 +155,7 @@ func raycast(scene *RaycastingScene, xa, xb, ya, yb int32, pixelColorFn PixelCol
 }
 
 type RaycastingScene struct {
+	UncompressedVoxels     *voxel.VoxelGrid
 	Voxels                 *voxel.VoxelGrid
 	Camera                 voxel.RaycastingCamera
 	SunPos                 voxel.Vector3f
@@ -167,6 +168,12 @@ func RenderRaycastingScene(scene *RaycastingScene, pixelColorFn PixelColorFn, pr
 	// compress voxels
 	for scene.Voxels.NumVoxelsY > 2 {
 		scene.Voxels = scene.Voxels.Compress()
+	}
+
+	// also keep uncompressed handy
+	scene.UncompressedVoxels = scene.Voxels
+	for scene.UncompressedVoxels.Parent != nil {
+		scene.UncompressedVoxels = scene.UncompressedVoxels.Parent
 	}
 
 	rl.SetConfigFlags(rl.FlagMsaa4xHint)
@@ -188,28 +195,45 @@ func RenderRaycastingScene(scene *RaycastingScene, pixelColorFn PixelColorFn, pr
 	rotationX, rotationY := float32(-5.5), float32(-0.5)
 
 	for !rl.WindowShouldClose() {
-		distanceMoved := 1.3 * rl.GetFrameTime()
+		// character controls
+		distanceMoved := 1.3 * rl.GetFrameTime() * 1
 
 		if rl.IsKeyDown(rl.KeyLeftShift) {
 			distanceMoved *= 20
 		}
 
+		newCameraPos := scene.Camera.Position
+
 		if rl.IsKeyDown('W') {
-			scene.Camera.Position = scene.Camera.Position.Plus(scene.Camera.Forward.MulScalar(distanceMoved))
+			newCameraPos = scene.Camera.Position.Plus(scene.Camera.Forward.MulScalar(distanceMoved))
 		}
 
 		if rl.IsKeyDown('A') {
-			scene.Camera.Position = scene.Camera.Position.Sub(scene.Camera.Right.MulScalar(distanceMoved))
+			newCameraPos = scene.Camera.Position.Sub(scene.Camera.Right.MulScalar(distanceMoved))
 		}
 
 		if rl.IsKeyDown('S') {
-			scene.Camera.Position = scene.Camera.Position.Sub(scene.Camera.Forward.MulScalar(distanceMoved))
+			newCameraPos = scene.Camera.Position.Sub(scene.Camera.Forward.MulScalar(distanceMoved))
 		}
 
 		if rl.IsKeyDown('D') {
-			scene.Camera.Position = scene.Camera.Position.Plus(scene.Camera.Right.MulScalar(distanceMoved))
+			newCameraPos = scene.Camera.Position.Plus(scene.Camera.Right.MulScalar(distanceMoved))
 		}
 
+		if rl.IsKeyDown(rl.KeySpace) {
+			newCameraPos.Y += distanceMoved
+		}
+
+		if rl.IsKeyDown(rl.KeyLeftControl) {
+			newCameraPos.Y -= distanceMoved
+		}
+
+		// move to new position as long as there isn't a voxel there
+		//if !scene.UncompressedVoxels.RectangleIntersects(newCameraPos, 2, 4) {
+		scene.Camera.Position = newCameraPos
+		//}
+
+		//  rendering controls
 		if rl.IsKeyPressed('L') {
 			scene.EnableLighting = !scene.EnableLighting
 		}
@@ -220,14 +244,6 @@ func RenderRaycastingScene(scene *RaycastingScene, pixelColorFn PixelColorFn, pr
 
 		if rl.IsKeyPressed('P') {
 			scene.EnablePerPixelLighting = !scene.EnablePerPixelLighting
-		}
-
-		if rl.IsKeyDown(rl.KeySpace) {
-			scene.Camera.Position.Y += distanceMoved
-		}
-
-		if rl.IsKeyDown(rl.KeyLeftControl) {
-			scene.Camera.Position.Y -= distanceMoved
 		}
 
 		if rl.IsKeyDown(rl.KeyUp) {

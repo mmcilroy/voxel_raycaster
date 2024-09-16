@@ -68,7 +68,7 @@ func main() {
 			ro := voxel.Vector3f{X: pos.X, Y: pos.Y, Z: pos.Z}
 			rd := voxel.Vector3f{X: dir.X, Y: dir.Y, Z: dir.Z}
 
-			hit, hitPos, voxelPos := voxels.DDASimple(ro, rd)
+			hit, hitPos, voxelPos := voxels.Raycast(ro, rd)
 			if hit != 0 {
 				rl.DrawSphere(rl.NewVector3(hitPos.X, hitPos.Y, hitPos.Z), 0.2, rl.Yellow)
 			} else {

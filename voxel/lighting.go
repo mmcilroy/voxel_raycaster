@@ -17,14 +17,14 @@ func HitNormal(hit int) Vector3f {
 	return Vector3fZero()
 }
 
-func HitFaceCenter(hit int, hitPos Vector3f) Vector3f {
-	mapPos := hitPos.ToVector3i()
+func HitFaceCenter(hit int, hitPos Vector3f, mapPos Vector3i, voxelSize float32) Vector3f {
+	voxelSizeHalved := voxelSize / 2
 	if hit == -1 || hit == 1 {
-		return Vector3f{X: hitPos.X, Y: float32(mapPos.Y) + 0.5, Z: float32(mapPos.Z) + 0.5}
+		return Vector3f{X: hitPos.X, Y: float32(mapPos.Y)*voxelSize + voxelSizeHalved, Z: float32(mapPos.Z)*voxelSize + voxelSizeHalved}
 	} else if hit == -2 || hit == 2 {
-		return Vector3f{X: float32(mapPos.X) + 0.5, Y: hitPos.Y, Z: float32(mapPos.Z) + 0.5}
+		return Vector3f{X: float32(mapPos.X)*voxelSize + voxelSizeHalved, Y: hitPos.Y, Z: float32(mapPos.Z)*voxelSize + voxelSizeHalved}
 	} else if hit == -3 || hit == 3 {
-		return Vector3f{X: float32(mapPos.X) + 0.5, Y: float32(mapPos.Y) + 0.5, Z: hitPos.Z}
+		return Vector3f{X: float32(mapPos.X)*voxelSize + voxelSizeHalved, Y: float32(mapPos.Y)*voxelSize + voxelSizeHalved, Z: hitPos.Z}
 	}
 	return Vector3fZero()
 }
