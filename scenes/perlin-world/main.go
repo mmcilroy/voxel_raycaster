@@ -10,13 +10,13 @@ const WORLD_WIDTH, WORLD_HEIGHT = 256, 128
 
 const NUM_RAYS_X, NUM_RAYS_Y = 320, 180
 
-func initPerlinWorld(w, h int) *voxel.VoxelGrid {
+func initPerlinWorld(w, h int32) *voxel.VoxelGrid {
 	world := voxel.NewVoxelGrid(w, h, w, 1.0)
 
-	perlinNoise := rl.GenImagePerlinNoise(world.NumVoxelsX, world.NumVoxelsZ, 0, 0, 0.5)
+	perlinNoise := rl.GenImagePerlinNoise(int(world.NumVoxelsX), int(world.NumVoxelsZ), 0, 0, 0.5)
 	colors := rl.LoadImageColors(perlinNoise)
 	maxHeight := float32(0.0)
-	gap := 0
+	gap := int32(0)
 
 	for z := gap; z < world.NumVoxelsZ-gap; z++ {
 		for x := gap; x < world.NumVoxelsX-gap; x++ {
@@ -25,7 +25,7 @@ func initPerlinWorld(w, h int) *voxel.VoxelGrid {
 			if height > float32(maxHeight) {
 				maxHeight = height
 			}
-			for y := 0; y < int(height)+1; y++ {
+			for y := int32(0); y < int32(height)+1; y++ {
 				world.SetVoxel(x, y, z, true)
 			}
 		}
@@ -34,7 +34,7 @@ func initPerlinWorld(w, h int) *voxel.VoxelGrid {
 	return world
 }
 
-func pixelColorFn(hit int, mapPos voxel.Vector3i) rl.Color {
+func pixelColorFn(hit int32, mapPos voxel.Vector3i) rl.Color {
 	color := rl.Black
 	if hit == 1 || hit == -1 {
 		color = rl.Brown
@@ -53,14 +53,14 @@ func main() {
 
 	raycastingScene := scene.RaycastingScene{
 		Voxels:                 world,
-		Camera:                 voxel.NewRaycastingCamera(NUM_RAYS_X, NUM_RAYS_Y, 0.66),
+		Camera:                 voxel.NewCamera(NUM_RAYS_X, NUM_RAYS_Y, 0.66),
 		SunPos:                 voxel.Vector3f{X: WORLD_WIDTH - 1, Y: WORLD_HEIGHT - 1, Z: 0},
 		EnableRecursiveDDA:     true,
 		EnableLighting:         true,
 		EnablePerPixelLighting: true,
 	}
 
-	raycastingScene.Camera.Position = voxel.Vector3f{X: 16, Y: 96, Z: 16}
+	raycastingScene.Camera.Body.Position = voxel.Vector3f{X: 16, Y: 96, Z: 16}
 
 	scene.RenderRaycastingScene(&raycastingScene, pixelColorFn, func() {}, func() {})
 }

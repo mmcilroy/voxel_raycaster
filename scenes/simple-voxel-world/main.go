@@ -50,7 +50,7 @@ func preUpdate() {
 	}
 }
 
-func pixelColorFn(hit int, mapPos voxel.Vector3i) rl.Color {
+func pixelColorFn(hit int32, mapPos voxel.Vector3i) rl.Color {
 	color := rl.Black
 	if hit == 1 || hit == -1 {
 		color = rl.Brown
@@ -64,22 +64,22 @@ func pixelColorFn(hit int, mapPos voxel.Vector3i) rl.Color {
 	return color
 }
 
-func column(world *voxel.VoxelGrid, x, y, z int) {
-	for h := 0; h < y; h++ {
+func column(world *voxel.VoxelGrid, x, y, z int32) {
+	for h := int32(0); h < y; h++ {
 		world.SetVoxel(x, h, z, true)
 	}
 }
 
 func initWorld() *voxel.VoxelGrid {
-	var world = voxel.NewVoxelGrid(WORLD_SIZE, WORLD_SIZE, WORLD_SIZE, VOXEL_SIZE/4.0)
+	var world = voxel.NewVoxelGrid(WORLD_SIZE, WORLD_SIZE, WORLD_SIZE, VOXEL_SIZE)
 
-	for z := 0; z < world.NumVoxelsZ; z++ {
-		for x := 0; x < world.NumVoxelsX; x++ {
+	for z := int32(0); z < world.NumVoxelsZ; z++ {
+		for x := int32(0); x < world.NumVoxelsX; x++ {
 			world.SetVoxel(x, 0, z, true)
 		}
 	}
 
-	center := WORLD_SIZE / 2
+	center := int32(WORLD_SIZE / 2)
 
 	column(world, center-1, 2, center+1)
 	column(world, center+1, 2, center-1)
@@ -101,14 +101,14 @@ func initWorld() *voxel.VoxelGrid {
 func main() {
 	raycastingScene = scene.RaycastingScene{
 		Voxels:                 initWorld(),
-		Camera:                 voxel.NewRaycastingCamera(NUM_RAYS_X, NUM_RAYS_Y, 0.66),
+		Camera:                 voxel.NewCamera(NUM_RAYS_X, NUM_RAYS_Y, 0.66),
 		SunPos:                 voxel.Vector3f{X: WORLD_SIZE - 1, Y: WORLD_SIZE - 1, Z: 0},
 		EnableRecursiveDDA:     true,
 		EnableLighting:         true,
 		EnablePerPixelLighting: true,
 	}
 
-	raycastingScene.Camera.Position = voxel.Vector3f{X: 1, Y: 3, Z: 1}
+	raycastingScene.Camera.Body.Position = voxel.Vector3f{X: 1, Y: 2, Z: 1}
 
 	scene.RenderRaycastingScene(&raycastingScene, pixelColorFn, preUpdate, func() {})
 }

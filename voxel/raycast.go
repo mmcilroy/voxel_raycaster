@@ -73,11 +73,11 @@ func calcSideDist(rayPos Vector3f, rayDir Vector3f, deltaDist Vector3f, mapPos V
 	return sideDist
 }
 
-func (grid *VoxelGrid) Raycast(rayPos Vector3f, rayDir Vector3f) (int, Vector3f, Vector3i) {
+func (grid *VoxelGrid) Raycast(rayPos Vector3f, rayDir Vector3f) (int32, Vector3f, Vector3i) {
 	return grid.RaycastC(rayPos, rayDir, nil)
 }
 
-func (grid *VoxelGrid) RaycastC(rayPos Vector3f, rayDir Vector3f, callback RaycastCallback) (int, Vector3f, Vector3i) {
+func (grid *VoxelGrid) RaycastC(rayPos Vector3f, rayDir Vector3f, callback RaycastCallback) (int32, Vector3f, Vector3i) {
 	// convert rayPos to voxel space
 	rayPos = rayPos.DivScalar(grid.VoxelSize)
 
@@ -93,7 +93,7 @@ func (grid *VoxelGrid) RaycastC(rayPos Vector3f, rayDir Vector3f, callback Rayca
 	// length of ray from current position to next x or y-side
 	sideDist := calcSideDist(rayPos, rayDir, deltaDist, mapPos)
 
-	hit, side := 0, 4
+	hit, side := int32(0), int32(4)
 	dist := float32(0.0)
 
 	for hit == 0 {
@@ -141,11 +141,11 @@ func (grid *VoxelGrid) RaycastC(rayPos Vector3f, rayDir Vector3f, callback Rayca
 	return hit, hitPos, mapPos
 }
 
-func (grid *VoxelGrid) RaycastRecursive(rayPos Vector3f, rayDir Vector3f) (int, Vector3f, Vector3i) {
+func (grid *VoxelGrid) RaycastRecursive(rayPos Vector3f, rayDir Vector3f) (int32, Vector3f, Vector3i) {
 	return grid.RaycastRecursiveC(rayPos, rayDir, nil)
 }
 
-func (grid *VoxelGrid) RaycastRecursiveC(rayPos Vector3f, rayDir Vector3f, callback RaycastCallback) (int, Vector3f, Vector3i) {
+func (grid *VoxelGrid) RaycastRecursiveC(rayPos Vector3f, rayDir Vector3f, callback RaycastCallback) (int32, Vector3f, Vector3i) {
 	// for the max resolution grid we move rayPos back slightly
 	// as this reduces the chances of it starting inside a voxel
 	if grid.Parent == nil {

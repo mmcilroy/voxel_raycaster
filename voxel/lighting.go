@@ -1,6 +1,6 @@
 package voxel
 
-func HitNormal(hit int) Vector3f {
+func HitNormal(hit int32) Vector3f {
 	if hit == -1 {
 		return Vector3f{X: 1, Y: 0, Z: 0}
 	} else if hit == 1 {
@@ -17,7 +17,7 @@ func HitNormal(hit int) Vector3f {
 	return Vector3fZero()
 }
 
-func HitFaceCenter(hit int, hitPos Vector3f, mapPos Vector3i, voxelSize float32) Vector3f {
+func HitFaceCenter(hit int32, hitPos Vector3f, mapPos Vector3i, voxelSize float32) Vector3f {
 	voxelSizeHalved := voxelSize / 2
 	if hit == -1 || hit == 1 {
 		return Vector3f{X: hitPos.X, Y: float32(mapPos.Y)*voxelSize + voxelSizeHalved, Z: float32(mapPos.Z)*voxelSize + voxelSizeHalved}
@@ -29,7 +29,7 @@ func HitFaceCenter(hit int, hitPos Vector3f, mapPos Vector3i, voxelSize float32)
 	return Vector3fZero()
 }
 
-func DiffuseLight(hit int, dir Vector3f) float32 {
+func DiffuseLight(hit int32, dir Vector3f) float32 {
 	diffuseLight := HitNormal(hit).DotProduct(dir)
 	if diffuseLight < 0.2 {
 		diffuseLight = 0.2

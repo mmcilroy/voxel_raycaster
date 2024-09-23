@@ -7,9 +7,9 @@ import (
 func TestVoxelGetSet(t *testing.T) {
 	grid := NewVoxelGrid(4, 4, 4, 1)
 
-	for y := 0; y < grid.NumVoxelsY-1; y++ {
-		for z := 0; z < grid.NumVoxelsZ-1; z++ {
-			for x := 0; x < grid.NumVoxelsX-1; x++ {
+	for y := int32(0); y < grid.NumVoxelsY-1; y++ {
+		for z := int32(0); z < grid.NumVoxelsZ-1; z++ {
+			for x := int32(0); x < grid.NumVoxelsX-1; x++ {
 
 				prev := grid.Voxels[grid.VoxelIndex(x, y, z)]
 				grid.SetVoxel(x, y, z, true)
@@ -23,9 +23,9 @@ func TestVoxelGetSet(t *testing.T) {
 		}
 	}
 
-	for y := 0; y < grid.NumVoxelsY-1; y++ {
-		for z := 0; z < grid.NumVoxelsZ-1; z++ {
-			for x := 0; x < grid.NumVoxelsX-1; x++ {
+	for y := int32(0); y < grid.NumVoxelsY-1; y++ {
+		for z := int32(0); z < grid.NumVoxelsZ-1; z++ {
+			for x := int32(0); x < grid.NumVoxelsX-1; x++ {
 
 				prev := grid.Voxels[grid.VoxelIndex(x, y, z)]
 				grid.SetVoxel(x, y, z, false)

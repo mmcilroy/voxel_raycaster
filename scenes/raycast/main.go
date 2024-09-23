@@ -65,7 +65,7 @@ func raycastCallback(grid *voxel.VoxelGrid, mapPos voxel.Vector3i) {
 
 func main() {
 	// create world and put a single voxel in the middle
-	vx, vy, vz := WORLD_WIDTH/2, WORLD_HEIGHT/2, WORLD_WIDTH/2
+	vx, vy, vz := int32(WORLD_WIDTH/2), int32(WORLD_HEIGHT/2), int32(WORLD_WIDTH/2)
 	voxels := voxel.NewVoxelGrid(WORLD_WIDTH, WORLD_HEIGHT, WORLD_WIDTH, VOXEL_SIZE)
 	voxels.SetVoxel(vx, vy, vz, true)
 	voxels = voxels.Compress() // 32

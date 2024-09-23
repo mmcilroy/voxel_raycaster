@@ -23,7 +23,7 @@ func handleInput() {
 }
 
 func main() {
-	var gridSize = 4
+	var gridSize = int32(4)
 	var voxelSize = float32(4)
 	voxels := voxel.NewVoxelGrid(gridSize, gridSize, gridSize, voxelSize)
 	voxels.SetVoxel(1, 1, 1, true)

@@ -1,49 +1,39 @@
 package voxel
 
-type RaycastingCamera struct {
-	Position    Vector3f // the camera location
-	Direction   Vector3f // where camera is looking (z component is focal length)
-	Forward     Vector3f
-	Right       Vector3f
-	Up          Vector3f // what way is up
-	Resolution  Vector2f // image plane resolution (x is always 1)
-	PlaneDelta  Vector2f // distanc+e to move along image plane for each ray increment
+type Camera struct {
+	Body        Moveable
+	Resolution  Vector2i
 	AspectRatio float32
-	RotateX     float32
-	RotateY     float32
+	FocalLength float32
 }
 
-func NewRaycastingCamera(resX, resY int32, focalLength float32) RaycastingCamera {
-	aspectRatio := float32(resX) / float32(resY)
-	planeDeltaX := 1.0 / float32(resX-1)
-	planeDeltaY := 1.0 / aspectRatio / float32(resY-1)
-	return RaycastingCamera{
-		Position:    Vector3fZero(),
-		Direction:   Vector3f{X: 0, Y: 0, Z: float32(focalLength)},
-		Up:          Vector3f{X: 0, Y: 1, Z: 0},
-		Resolution:  Vector2f{X: float32(resX), Y: float32(resY)},
-		PlaneDelta:  Vector2f{X: planeDeltaX, Y: planeDeltaY},
-		AspectRatio: aspectRatio,
+type CameraPlane struct {
+	CenterPos Vector3f
+	UpDir     Vector3f
+	RightDir  Vector3f
+}
+
+func NewCamera(resX, resY, focalLength float32) Camera {
+	return Camera{
+		Resolution:  Vector2i{X: int32(resX), Y: int32(resY)},
+		AspectRatio: resY / resX,
+		FocalLength: focalLength,
 	}
 }
 
-func (camera *RaycastingCamera) Rotate(x, y float32) {
-	camera.Forward = camera.Direction.RotateByAxisAngle(camera.Up, x).Normalize()
-	camera.Right = camera.Forward.CrossProduct(camera.Up)
-	camera.RotateX = x
-	camera.RotateY = y
+func (c *Camera) Plane() CameraPlane {
+	plane := CameraPlane{}
+	plane.RightDir = c.Body.Right
+	plane.UpDir = UP.RotateByAxisAngle(c.Body.Right, c.Body.Rotation.Y).Normalize()
+	plane.CenterPos = Vector3f{X: 0, Y: 0, Z: c.FocalLength}
+	plane.CenterPos = plane.CenterPos.RotateByAxisAngle(UP, c.Body.Rotation.X)
+	plane.CenterPos = plane.CenterPos.RotateByAxisAngle(c.Body.Right, c.Body.Rotation.Y)
+	plane.CenterPos = plane.CenterPos.Plus(c.Body.Position)
+	return plane
 }
 
-func (camera *RaycastingCamera) GetRayForPixel(x, y int32) (Vector3f, Vector3f) {
-	planeX := camera.PlaneDelta.X * float32(x)
-	planeY := camera.PlaneDelta.Y * float32(y)
-
-	pos := camera.Direction.Plus(Vector3f{X: planeX - 0.5, Y: planeY - (1 / camera.AspectRatio / 2), Z: 0})
-	pos = pos.RotateByAxisAngle(camera.Up, float32(camera.RotateX))
-	pos = pos.RotateByAxisAngle(camera.Right, camera.RotateY)
-
-	pos = pos.Plus(camera.Position)
-	dir := pos.Sub(camera.Position).Normalize()
-
-	return pos, dir
+func (c *Camera) RayDir(plane *CameraPlane, x, y int32) (Vector3f, Vector3f) {
+	rayPos := plane.CenterPos.Plus(plane.RightDir.MulScalar(float32(x)/float32(c.Resolution.X) - 0.5))
+	rayPos = rayPos.Sub(plane.UpDir.MulScalar((float32(y)/float32(c.Resolution.Y) - 0.5) * c.AspectRatio))
+	return rayPos, Direction(rayPos, c.Body.Position)
 }

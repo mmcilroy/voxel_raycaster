@@ -21,7 +21,7 @@ func rotatingPosition(origin rl.Vector3, radius, angleX, angleY float32) rl.Vect
 
 func main() {
 	mode := 1
-	gridSize := 4
+	gridSize := int32(4)
 	voxelSize := float32(4)
 	voxels := voxel.NewVoxelGrid(gridSize, gridSize, gridSize, voxelSize)
 	voxels.SetVoxel(1, 1, 1, true)

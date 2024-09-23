@@ -4,8 +4,12 @@ import (
 	"math"
 )
 
+type Vector2i struct {
+	X, Y int32
+}
+
 type Vector3i struct {
-	X, Y, Z int
+	X, Y, Z int32
 }
 
 type Vector3f struct {
@@ -17,15 +21,27 @@ type Vector2f struct {
 }
 
 func (v Vector3f) ToVector3i() Vector3i {
-	return Vector3i{X: int(v.X), Y: int(v.Y), Z: int(v.Z)}
+	return Vector3i{X: int32(v.X), Y: int32(v.Y), Z: int32(v.Z)}
 }
 
 func (v Vector3i) ToVector3f() Vector3f {
 	return Vector3f{X: float32(v.X), Y: float32(v.Y), Z: float32(v.Z)}
 }
 
+func Vector2fZero() Vector2f {
+	return Vector2f{X: 0, Y: 0}
+}
+
 func Vector3fZero() Vector3f {
 	return Vector3f{X: 0, Y: 0, Z: 0}
+}
+
+func Vector3fUp() Vector3f {
+	return Vector3f{X: 0, Y: 1, Z: 0}
+}
+
+func Vector3fRight() Vector3f {
+	return Vector3f{X: -1, Y: 0, Z: 0}
 }
 
 func (v Vector3f) Sign() Vector3f {
