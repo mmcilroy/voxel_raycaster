@@ -7,7 +7,7 @@ import (
 	"github.com/mmcilroy/structure_go/voxel"
 )
 
-const WORLD_WIDTH, WORLD_HEIGHT = 128, 128
+const WORLD_WIDTH, WORLD_HEIGHT = 1024, 512
 
 const NUM_RAYS_X, NUM_RAYS_Y = 320, 180
 
@@ -20,9 +20,9 @@ var voxelColors = map[voxel.Vector3i]byte{}
 //var voxelColors2 = make([]byte, WORLD_WIDTH*WORLD_HEIGHT*WORLD_WIDTH)
 
 func initWorld() {
-	world = voxel.NewVoxelGrid(WORLD_WIDTH, WORLD_HEIGHT, WORLD_WIDTH, 1.0)
+	world = voxel.NewVoxelGrid(WORLD_WIDTH, WORLD_HEIGHT, WORLD_WIDTH, 1)
 
-	object, _ := magica.FromFile("..\\..\\assets\\monu3.vox")
+	object, _ := magica.FromFile("..\\..\\assets\\models\\settlement.vox")
 
 	for i := 0; i < len(object.PaletteData); i += 4 {
 		palette[i/4] = rl.NewColor(object.PaletteData[i], object.PaletteData[i+1], object.PaletteData[i+2], 255)
