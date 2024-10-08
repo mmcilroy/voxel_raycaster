@@ -7,7 +7,7 @@ import (
 	"github.com/mmcilroy/structure_go/voxel"
 )
 
-const WORLD_WIDTH, WORLD_HEIGHT = 1024, 512
+const WORLD_WIDTH, WORLD_HEIGHT = 1024, 1024
 
 const NUM_RAYS_X, NUM_RAYS_Y = 320, 180
 
@@ -15,12 +15,16 @@ var world *voxel.VoxelGrid
 
 var palette = make([]rl.Color, 256)
 
-var voxelColors = map[voxel.Vector3i]byte{}
+//var voxelColors = map[voxel.Vector3i]byte{}
 
-//var voxelColors2 = make([]byte, WORLD_WIDTH*WORLD_HEIGHT*WORLD_WIDTH)
+var voxelColors = make([]byte, WORLD_WIDTH*WORLD_WIDTH*WORLD_HEIGHT)
+
+func voxelColorIndex(x, y, z int32) int32 {
+	return x + z*WORLD_WIDTH + y*WORLD_WIDTH*WORLD_WIDTH
+}
 
 func initWorld() {
-	world = voxel.NewVoxelGrid(WORLD_WIDTH, WORLD_HEIGHT, WORLD_WIDTH, 1)
+	world = voxel.NewVoxelGrid(WORLD_WIDTH, WORLD_HEIGHT, WORLD_WIDTH, 0.25)
 
 	object, _ := magica.FromFile("..\\..\\assets\\models\\settlement.vox")
 
@@ -28,16 +32,14 @@ func initWorld() {
 		palette[i/4] = rl.NewColor(object.PaletteData[i], object.PaletteData[i+1], object.PaletteData[i+2], 255)
 	}
 
-	for z := 0; z < object.Size.Z; z++ {
-		for y := 0; y < object.Size.Y; y++ {
-			for x := 0; x < object.Size.X; x++ {
+	for z := int32(0); z < int32(object.Size.Z); z++ {
+		for y := int32(0); y < int32(object.Size.Y); y++ {
+			for x := int32(0); x < int32(object.Size.X); x++ {
 				v := object.Voxels[x][y][z]
 				if v != 0 {
 					world.SetVoxel(int32(x+10), int32(z), int32(y+10), true)
-					voxelColors[voxel.Vector3i{X: int32(x + 10), Y: int32(z), Z: int32(y + 10)}] = v
-
-					//colorIndex := (x + 10) + z*WORLD_WIDTH + (y+10)*WORLD_WIDTH*WORLD_HEIGHT
-					//voxelColors2[colorIndex] = v
+					voxelColors[voxelColorIndex(x+10, z, y+10)] = v
+					//voxelColors[voxel.Vector3i{X: int32(x + 10), Y: int32(z), Z: int32(y + 10)}] = v
 				}
 			}
 		}
@@ -52,10 +54,9 @@ func pixelColorFn(hit int32, mapPos voxel.Vector3i) rl.Color {
 	color := rl.SkyBlue
 
 	if hit != 0 {
-		//colorIndex := (mapPos.X) + mapPos.Z*WORLD_WIDTH + (mapPos.Y)*WORLD_WIDTH*WORLD_HEIGHT
-		//paletteIndex := int(voxelColors2[colorIndex])
+		paletteIndex := int(voxelColors[voxelColorIndex(mapPos.X, mapPos.Y, mapPos.Z)])
+		//paletteIndex := int(voxelColors[voxel.Vector3i{X: mapPos.X, Y: mapPos.Y, Z: mapPos.Z}])
 
-		paletteIndex := int(voxelColors[voxel.Vector3i{X: mapPos.X, Y: mapPos.Y, Z: mapPos.Z}])
 		if paletteIndex > 0 {
 			paletteIndex -= 1
 		}

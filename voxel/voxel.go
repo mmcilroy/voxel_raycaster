@@ -109,7 +109,7 @@ func (grid *VoxelGrid) RectangleIntersects(rectCenter Vector3f, rectWidth, rectH
 	for z := 0; z <= rectWidth; z++ {
 		for y := 0; y <= rectHeight; y++ {
 			for x := 0; x <= rectWidth; x++ {
-				voxelPos := rectCorner.Plus(Vector3f{X: float32(x), Y: float32(y), Z: float32(z)}).ToVector3i()
+				voxelPos := rectCorner.Plus(Vector3f{X: float32(x), Y: float32(y), Z: float32(z)}).DivScalar(grid.VoxelSize).ToVector3i()
 				if grid.GetVoxel(voxelPos.X, voxelPos.Y, voxelPos.Z) {
 					return true
 				}

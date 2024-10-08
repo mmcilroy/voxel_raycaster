@@ -109,6 +109,7 @@ func main() {
 	}
 
 	raycastingScene.Camera.Body.Position = voxel.Vector3f{X: 1, Y: 2, Z: 1}
+	raycastingScene.Camera.Body.Rotation.Y = -0.1
 
 	scene.RenderRaycastingScene(&raycastingScene, pixelColorFn, preUpdate, func() {})
 }

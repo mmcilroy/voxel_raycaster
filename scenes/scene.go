@@ -25,7 +25,7 @@ func DrawSphere(pos voxel.Vector3f, radius float32, color rl.Color) {
 	rl.DrawSphere(ToRlVector(pos), radius, color)
 }
 
-func DrawVoxel(x, y, z int, s float32, c rl.Color) {
+func DrawVoxel(x, y, z int32, s float32, c rl.Color) {
 	hs := s / 2
 	rl.DrawCube(rl.NewVector3(float32(x)*s+hs, float32(y)*s+hs, float32(z)*s+hs), s, s, s, c)
 }
@@ -51,6 +51,7 @@ func RenderScene(handleInput func(), render3D func(), render2D func()) {
 	defer rl.CloseWindow()
 
 	rl.DisableCursor()
+	rl.SetTargetFPS(60)
 
 	camera := rl.Camera{
 		Position:   rl.Vector3{X: 0, Y: 10, Z: -10},
@@ -99,58 +100,84 @@ func RenderVoxelScene(voxels *voxel.VoxelGrid, handleInput func(), render3D func
 	}, render2D)
 }
 
+// would this be better named VoxelColorFn?
+// voxels are fixed color but pixel color is affected by lighting
 type PixelColorFn func(hit int32, mapPos voxel.Vector3i) rl.Color
 
-func raycast(scene *RaycastingScene, xa, xb, ya, yb int32, pixelColorFn PixelColorFn, pixels *[]rl.Color, frameWait *sync.WaitGroup) {
+func raycastPixel(scene *RaycastingScene, x, y int32, pixelColorFn PixelColorFn) rl.Color {
+	// get the ray direction
+	plane := scene.Camera.Plane()
+	_, rayDir := scene.Camera.RayDir(&plane, int32(x), int32(y))
+
+	// decide what version of the voxel grid to use
+	voxels := scene.Voxels
+	if !scene.EnableRecursiveDDA {
+		voxels = scene.UncompressedVoxels
+	}
+
+	// fire a ray into the scene and check what we hit
+	hit, hitPos, mapPos := voxels.RaycastRecursive(scene.Camera.Body.Position, rayDir)
+
+	// get the pixel color for the voxel and face
+	color := pixelColorFn(hit, mapPos)
+
+	// if lightning is enabled and something was hit apply shadows
+	lightScale := float32(1)
+	if scene.EnableLighting && hit != 0 && hit != 4 {
+		// if we are not lighting per pixel do it per voxel face
+		if !scene.EnablePerPixelLighting {
+			hitPos = voxel.HitFaceCenter(hit, hitPos, mapPos, scene.UncompressedVoxels.VoxelSize)
+		}
+
+		// check if the hit point is visible to the sun
+		sunHit, sunHitPos, sunMapPos := voxels.RaycastRecursive(scene.SunPos, voxel.Direction(hitPos, scene.SunPos))
+
+		// if sun ray hits the same block and face as our initial ray calc lighting
+		if sunHit == hit && sunMapPos.Equals(mapPos) {
+			lightScale = voxel.DiffuseLight(sunHit, voxel.Direction(scene.SunPos, sunHitPos))
+		} else {
+			lightScale = 0.2 // shadow
+		}
+	}
+
+	return rl.NewColor(
+		uint8(float32(color.R)*lightScale),
+		uint8(float32(color.G)*lightScale),
+		uint8(float32(color.B)*lightScale),
+		255)
+}
+
+func raycastQuad(scene *RaycastingScene, xa, xb, ya, yb int32, pixelColorFn PixelColorFn, pixels *[]rl.Color, frameWait *sync.WaitGroup) {
 	defer frameWait.Done()
 
 	for y := ya; y < yb; y++ {
 		for x := xa; x < xb; x++ {
-			// get the ray direction
-			plane := scene.Camera.Plane()
-			_, rayDir := scene.Camera.RayDir(&plane, int32(x), int32(y))
+			// get pixel color
+			color := raycastPixel(scene, x, y, pixelColorFn)
 
-			// decide what version of the voxel grid to use
-			voxels := scene.Voxels
-			if !scene.EnableRecursiveDDA {
-				voxels = scene.UncompressedVoxels
-			}
-
-			// fire a ray into the scene and check what we hit
-			hit, hitPos, mapPos := voxels.RaycastRecursive(scene.Camera.Body.Position, rayDir)
-
-			// get the pixel color for the voxel and face
-			color := pixelColorFn(hit, mapPos)
-
-			// if lightning is enabled and something was hit apply shadows
-			if scene.EnableLighting && hit != 0 && hit != 4 {
-				// if we are not lighting per pixel do it per voxel face
-				if !scene.EnablePerPixelLighting {
-					hitPos = voxel.HitFaceCenter(hit, hitPos, mapPos, scene.UncompressedVoxels.VoxelSize)
-				}
-
-				// check if the hit point is visible to the sun
-				sunHit, sunHitPos, sunMapPos := voxels.RaycastRecursive(scene.SunPos, voxel.Direction(hitPos, scene.SunPos))
-
-				// if sun ray hits the same block and face as our initial ray calc lighting
-				if sunHit == hit && sunMapPos.Equals(mapPos) {
-					diffuseLight := voxel.DiffuseLight(sunHit, voxel.Direction(scene.SunPos, sunHitPos))
-					color = rl.NewColor(
-						uint8(float32(color.R)*diffuseLight),
-						uint8(float32(color.G)*diffuseLight),
-						uint8(float32(color.B)*diffuseLight),
-						255)
-				} else {
-					color = rl.NewColor(
-						uint8(float32(color.R)*0.2),
-						uint8(float32(color.G)*0.2),
-						uint8(float32(color.B)*0.2),
-						255)
-				}
-			}
-
-			// write the color into our pixel buffer
+			// write into pixel buffer
 			(*pixels)[x+y*int32(scene.Camera.Resolution.X)] = color
+
+			/*
+				Just testing AA
+
+				color0 := raycastPixel(scene, x, y, pixelColorFn)
+				color1 := raycastPixel(scene, x+1, y, pixelColorFn)
+				color2 := raycastPixel(scene, x, y+1, pixelColorFn)
+				color3 := raycastPixel(scene, x+1, y+1, pixelColorFn)
+
+				r := int32(color0.R) + int32(color1.R) + int32(color2.R) + int32(color3.R)
+				g := int32(color0.G) + int32(color1.G) + int32(color2.G) + int32(color3.G)
+				b := int32(color0.B) + int32(color1.B) + int32(color2.B) + int32(color3.B)
+
+				r /= 4
+				g /= 4
+				b /= 4
+
+				finalColor := rl.NewColor(uint8(r), uint8(g), uint8(b), 255)
+
+				(*pixels)[x+y*int32(scene.Camera.Resolution.X)] = finalColor
+			*/
 		}
 	}
 }
@@ -163,7 +190,7 @@ func renderSoftware(scene *RaycastingScene, frame *rl.RenderTexture2D, pixelColo
 	frameWait.Add(NUM_THREADS_X * NUM_THREADS_Y)
 	for ty := 0; ty < NUM_THREADS_Y; ty++ {
 		for tx := 0; tx < NUM_THREADS_X; tx++ {
-			go raycast(
+			go raycastQuad(
 				scene,
 				int32(int(scene.Camera.Resolution.X)/NUM_THREADS_X*tx),
 				int32(int(scene.Camera.Resolution.X)/NUM_THREADS_X*(tx+1)),
@@ -175,6 +202,10 @@ func renderSoftware(scene *RaycastingScene, frame *rl.RenderTexture2D, pixelColo
 		}
 	}
 	frameWait.Wait()
+
+	// center pixel is red for debugging
+	cx, cy := int32(scene.Camera.Resolution.X/2), int32(scene.Camera.Resolution.Y/2)
+	(*pixels)[cx+int32(cy*scene.Camera.Resolution.X)] = rl.Red
 
 	// use output color to create frame
 	rl.BeginTextureMode(*frame)
@@ -210,7 +241,6 @@ type RaycastingScene struct {
 	EnableRecursiveDDA     bool
 	EnableLighting         bool
 	EnablePerPixelLighting bool
-	EnableGpu              bool
 }
 
 func RenderRaycastingScene(scene *RaycastingScene, pixelColorFn PixelColorFn, preFn func(), postFn func()) {
@@ -238,40 +268,15 @@ func RenderRaycastingScene(scene *RaycastingScene, pixelColorFn PixelColorFn, pr
 	pixels := make([]rl.Color, int(scene.Camera.Resolution.X*scene.Camera.Resolution.Y))
 
 	// the frame that will be displayed (cpu only)
-	cpuTexture := rl.LoadRenderTexture(int32(scene.Camera.Resolution.X), int32(scene.Camera.Resolution.Y))
-
-	// gpu frame
-	// imBlank := rl.GenImageColor(RESOLUTION_X, RESOLUTION_Y, rl.Blank)
-	// gpuTexture := rl.LoadTextureFromImage(imBlank)
-	// rl.UnloadImage(imBlank)
-
-	// init gpu frag shader
-	// shader := rl.LoadShader("", "..\\..\\assets\\shaders\\frag.fs")
-
-	// get uniform locations
-	// resolutionLoc := rl.GetShaderLocation(shader, "resolution")
-	// cameraPosLoc := rl.GetShaderLocation(shader, "cameraPos")
-	// cameraPlaneLoc := rl.GetShaderLocation(shader, "cameraPlane")
-	// cameraUpLoc := rl.GetShaderLocation(shader, "cameraUp")
-	// cameraRightLoc := rl.GetShaderLocation(shader, "cameraRight")
-	// numVoxelsLoc := rl.GetShaderLocation(shader, "numVoxels")
-	// sunPosLoc := rl.GetShaderLocation(shader, "sunPos")
-
-	// set constant uniforms
-	// rl.SetShaderValue(shader, resolutionLoc, []float32{RESOLUTION_X, RESOLUTION_Y}, rl.ShaderUniformVec2)
-	// rl.SetShaderValue(shader, numVoxelsLoc, []float32{float32(scene.UncompressedVoxels.NumVoxelsX), float32(scene.UncompressedVoxels.NumVoxelsY), float32(scene.UncompressedVoxels.NumVoxelsZ)}, rl.ShaderUniformVec3)
-
-	// send voxel data to gpu
-	// ssbo := rl.LoadShaderBuffer(uint32(len(scene.UncompressedVoxels.Voxels)), unsafe.Pointer(unsafe.SliceData(scene.UncompressedVoxels.Voxels)), rl.DynamicCopy)
-	//rl.BindShaderBuffer(ssbo, 13)
+	texture := rl.LoadRenderTexture(int32(scene.Camera.Resolution.X), int32(scene.Camera.Resolution.Y))
 
 	for !rl.WindowShouldClose() {
 		// character controls
 		var moveForward, moveSide, moveUp float32
 
-		speed := 10 * rl.GetFrameTime() * 1
+		speed := 5 * rl.GetFrameTime() * 1
 		if rl.IsKeyDown(rl.KeyLeftShift) {
-			speed *= 20
+			speed *= 10
 		}
 
 		if rl.IsKeyDown('W') {
@@ -311,10 +316,6 @@ func RenderRaycastingScene(scene *RaycastingScene, pixelColorFn PixelColorFn, pr
 			scene.EnablePerPixelLighting = !scene.EnablePerPixelLighting
 		}
 
-		if rl.IsKeyPressed('G') {
-			scene.EnableGpu = !scene.EnableGpu
-		}
-
 		if rl.IsKeyDown(rl.KeyUp) {
 			scene.SunPos.Y += speed
 		}
@@ -331,29 +332,27 @@ func RenderRaycastingScene(scene *RaycastingScene, pixelColorFn PixelColorFn, pr
 			scene.SunPos.X -= speed
 		}
 
+		// allows us to debug raycasting for the center pixel
+		if rl.IsKeyPressed('T') {
+			cx, cy := int32(scene.Camera.Resolution.X/2), int32(scene.Camera.Resolution.Y/2)
+			raycastPixel(scene, cx, cy, pixelColorFn)
+		}
+
 		// move and rotate camera
 		mouseDelta := rl.GetMouseDelta()
-		scene.Camera.Body.Move(moveForward, moveSide, moveUp)
 		scene.Camera.Body.Rotate(mouseDelta.X*-0.003, mouseDelta.Y*-0.003)
 
-		// update shader uniforms
-		// if scene.EnableGpu {
-		// 	camera := scene.Camera
-		// 	plane := camera.Plane()
-		// 	rl.SetShaderValue(shader, cameraPosLoc, []float32{camera.Body.Position.X, camera.Body.Position.Y, camera.Body.Position.Z}, rl.ShaderUniformVec3)
-		// 	rl.SetShaderValue(shader, cameraPlaneLoc, []float32{plane.CenterPos.X, plane.CenterPos.Y, plane.CenterPos.Z}, rl.ShaderUniformVec3)
-		// 	rl.SetShaderValue(shader, cameraUpLoc, []float32{plane.UpDir.X, plane.UpDir.Y, plane.UpDir.Z}, rl.ShaderUniformVec3)
-		// 	rl.SetShaderValue(shader, cameraRightLoc, []float32{plane.RightDir.X, plane.RightDir.Y, plane.RightDir.Z}, rl.ShaderUniformVec3)
-		// 	rl.SetShaderValue(shader, sunPosLoc, []float32{float32(scene.SunPos.X), float32(scene.SunPos.Y), float32(scene.SunPos.Z)}, rl.ShaderUniformVec3)
-		// }
+		//prevPos := scene.Camera.Body.Position
+		scene.Camera.Body.Move(moveForward, moveSide, moveUp)
+
+		// move to new position as long as there isn't a voxel there
+		//if scene.UncompressedVoxels.RectangleIntersects(scene.Camera.Body.Position, 1, 2) {
+		//	scene.Camera.Body.Position = prevPos
+		//}
 
 		preFn()
 
-		//if scene.EnableGpu {
-		//	renderHardware(&gpuTexture, &shader)
-		//} else {
-		renderSoftware(scene, &cpuTexture, pixelColorFn, &pixels, &frameWait)
-		//}
+		renderSoftware(scene, &texture, pixelColorFn, &pixels, &frameWait)
 
 		rl.DrawFPS(20, 20)
 		rl.DrawText(fmt.Sprintf("%.02f, %.02f, %.02f, %.02f, %.02f", scene.Camera.Body.Position.X, scene.Camera.Body.Position.Y, scene.Camera.Body.Position.Z, scene.Camera.Body.Rotation.X, scene.Camera.Body.Rotation.Y), 20, 40, 20, rl.White)
@@ -363,6 +362,4 @@ func RenderRaycastingScene(scene *RaycastingScene, pixelColorFn PixelColorFn, pr
 
 		rl.EndDrawing()
 	}
-
-	//rl.UnloadShader(shader)
 }
