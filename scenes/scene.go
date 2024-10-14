@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
-	"github.com/mmcilroy/structure_go/voxel"
+	"github.com/mmcilroy/voxel_raycaster/voxel"
 )
 
 const RESOLUTION_X, RESOLUTION_Y = 1600, 900
@@ -123,20 +123,21 @@ func raycastPixel(scene *RaycastingScene, x, y int32, pixelColorFn PixelColorFn)
 
 	// if lightning is enabled and something was hit apply shadows
 	lightScale := float32(1)
+
+	// check if the hit point is visible to the sun
 	if scene.EnableLighting && hit != 0 && hit != 4 {
+
 		// if we are not lighting per pixel do it per voxel face
 		if !scene.EnablePerPixelLighting {
 			hitPos = voxel.HitFaceCenter(hit, hitPos, mapPos, scene.UncompressedVoxels.VoxelSize)
 		}
-
-		// check if the hit point is visible to the sun
-		sunHit, sunHitPos, sunMapPos := voxels.RaycastRecursive(scene.SunPos, voxel.Direction(hitPos, scene.SunPos))
+		sunHit, sunHitPos, _ := voxels.RaycastRecursive(scene.SunPos, voxel.Direction(hitPos, scene.SunPos))
 
 		// if sun ray hits the same block and face as our initial ray calc lighting
-		if sunHit == hit && sunMapPos.Equals(mapPos) {
+		if sunHit == hit && voxel.Distance(hitPos, sunHitPos) < 0.5 /*sunMapPos.Equals(mapPos)*/ {
 			lightScale = voxel.DiffuseLight(sunHit, voxel.Direction(scene.SunPos, sunHitPos))
 		} else {
-			lightScale = 0.2 // shadow
+			lightScale = 0.5 // shadow
 		}
 	}
 
@@ -157,27 +158,6 @@ func raycastQuad(scene *RaycastingScene, xa, xb, ya, yb int32, pixelColorFn Pixe
 
 			// write into pixel buffer
 			(*pixels)[x+y*int32(scene.Camera.Resolution.X)] = color
-
-			/*
-				Just testing AA
-
-				color0 := raycastPixel(scene, x, y, pixelColorFn)
-				color1 := raycastPixel(scene, x+1, y, pixelColorFn)
-				color2 := raycastPixel(scene, x, y+1, pixelColorFn)
-				color3 := raycastPixel(scene, x+1, y+1, pixelColorFn)
-
-				r := int32(color0.R) + int32(color1.R) + int32(color2.R) + int32(color3.R)
-				g := int32(color0.G) + int32(color1.G) + int32(color2.G) + int32(color3.G)
-				b := int32(color0.B) + int32(color1.B) + int32(color2.B) + int32(color3.B)
-
-				r /= 4
-				g /= 4
-				b /= 4
-
-				finalColor := rl.NewColor(uint8(r), uint8(g), uint8(b), 255)
-
-				(*pixels)[x+y*int32(scene.Camera.Resolution.X)] = finalColor
-			*/
 		}
 	}
 }
@@ -223,14 +203,6 @@ func renderSoftware(scene *RaycastingScene, frame *rl.RenderTexture2D, pixelColo
 		rl.NewVector2(0, 0),
 		0,
 		rl.White)
-}
-
-func renderHardware(frame *rl.Texture2D, shader *rl.Shader) {
-	rl.BeginDrawing()
-	rl.ClearBackground(rl.Black)
-	rl.BeginShaderMode(*shader)
-	rl.DrawTexture(*frame, 0, 0, rl.White)
-	rl.EndShaderMode()
 }
 
 type RaycastingScene struct {

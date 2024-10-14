@@ -3,8 +3,8 @@ package main
 import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 	"github.com/mattkimber/gandalf/magica"
-	scene "github.com/mmcilroy/structure_go/scenes"
-	"github.com/mmcilroy/structure_go/voxel"
+	scene "github.com/mmcilroy/voxel_raycaster/scenes"
+	"github.com/mmcilroy/voxel_raycaster/voxel"
 )
 
 const WORLD_WIDTH, WORLD_HEIGHT = 1024, 1024

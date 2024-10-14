@@ -150,6 +150,30 @@ func (v1 Vector3f) Abs() Vector3f {
 	}
 }
 
+func (v1 Vector3f) RoundX() Vector3f {
+	return Vector3f{
+		float32(math.Round(float64(v1.X))),
+		v1.Y,
+		v1.Z,
+	}
+}
+
+func (v1 Vector3f) RoundY() Vector3f {
+	return Vector3f{
+		v1.X,
+		float32(math.Round(float64(v1.Y))),
+		v1.Z,
+	}
+}
+
+func (v1 Vector3f) RoundZ() Vector3f {
+	return Vector3f{
+		v1.X,
+		v1.Y,
+		float32(math.Round(float64(v1.Z))),
+	}
+}
+
 func (v1 Vector3f) YZX() Vector3f {
 	return Vector3f{
 		v1.Y,

@@ -1,4 +1,4 @@
-module github.com/mmcilroy/structure_go
+module github.com/mmcilroy/voxel_raycaster
 
 go 1.22.3
 

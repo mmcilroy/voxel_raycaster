@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
-	scene "github.com/mmcilroy/structure_go/scenes"
-	"github.com/mmcilroy/structure_go/voxel"
+	scene "github.com/mmcilroy/voxel_raycaster/scenes"
+	"github.com/mmcilroy/voxel_raycaster/voxel"
 )
 
 var rayOrigin = voxel.Vector3f{X: 14.28, Y: 7.6, Z: 0.0}

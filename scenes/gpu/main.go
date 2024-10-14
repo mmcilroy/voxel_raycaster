@@ -6,7 +6,7 @@ import (
 	"unsafe"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
-	"github.com/mmcilroy/structure_go/voxel"
+	"github.com/mmcilroy/voxel_raycaster/voxel"
 )
 
 const RESOLUTION_X, RESOLUTION_Y = 1600, 900

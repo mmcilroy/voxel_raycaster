@@ -2,8 +2,8 @@ package main
 
 import (
 	rl "github.com/gen2brain/raylib-go/raylib"
-	scene "github.com/mmcilroy/structure_go/scenes"
-	"github.com/mmcilroy/structure_go/voxel"
+	scene "github.com/mmcilroy/voxel_raycaster/scenes"
+	"github.com/mmcilroy/voxel_raycaster/voxel"
 )
 
 const NUM_RAYS_X, NUM_RAYS_Y = 320, 180

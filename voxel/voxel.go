@@ -44,8 +44,9 @@ func (grid *VoxelGrid) GetVoxel(x, y, z int32) bool {
 
 	voxel := grid.Voxels[i]
 
-	if voxel == 0 {
-		return false
+	// no need to check individual bits if all or none set
+	if voxel == 0 || voxel == 255 {
+		return voxel == 255
 	}
 
 	mask := voxelBitMask(x%2, y%2, z%2)

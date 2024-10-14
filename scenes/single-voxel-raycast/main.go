@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
-	scene "github.com/mmcilroy/structure_go/scenes"
-	"github.com/mmcilroy/structure_go/voxel"
+	scene "github.com/mmcilroy/voxel_raycaster/scenes"
+	"github.com/mmcilroy/voxel_raycaster/voxel"
 )
 
 func rotatingPosition(origin rl.Vector3, radius, angleX, angleY float32) rl.Vector3 {
